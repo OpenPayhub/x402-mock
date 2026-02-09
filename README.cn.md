@@ -1,19 +1,22 @@
 
 # x402_mock
 
-`x402_mock` 是一个用于 **演示与验证 x402 支付流程** 的实验性模块。
+`x402_mock` 是一个完整实现 **HTTP 402 状态码支付流程** 的生产级模块。
 
-该模块基于 **Web3 + USDC（ERC20）**，完整跑通了以下链路：
+## 模块功能
 
-> **Client → Server → On-chain（Permit + Transfer）**
+本模块完成了基于 **HTTP 402 Payment Required** 状态码的完整付款流程，实现了 Web2 HTTP 协议与 Web3 链上支付的无缝结合。
 
-目前完成了：
-- client 向 server 发起支付请求  
-- server 对请求进行校验并构造链上交易  
-- 基于 `permit` 的签名验证  
-- 最终完成链上 USDC 转账  
+该模块基于 **Web3 + USDC（ERC20）**，完整实现了以下链路：
 
-本模块的目标不是生产可用，而是 **让 x402 的支付语义与交互流程足够清晰、可验证、可演示**，为未来 **Agent-to-Agent 的自动化支付** 打基础。
+> **Client（请求方）→ Server（被请求方）→ On-chain Settlement（链上结算）**
+
+核心特性：
+- ✅ 基于 HTTP 402 状态码的标准化支付协议
+- ✅ EIP-2612 Permit 签名，无需预先授权（gas-less approval）
+- ✅ 异步链上结算，不阻塞业务流程
+- ✅ 支持多种支付方式协商与匹配
+- 🤖 面向 **Agent-to-Agent** 自动化支付场景设计
 
 ---
 
@@ -26,129 +29,189 @@
 
 ---
 
-## 交互流程
+## 完整交互流程
 
-整体交互流程如下所示：
+### 1. 初始请求（未授权）
 
-```
+**Client** 向 **Server** 的收费端口发起 GET 请求，请求时携带空的或错误的 `Authorization` header。
 
-Client
-│
-│  (x402 request)
-▼
-Server
-│
-│  (permit verification)
-│
-▼
-On-chain (USDC)
+**Server** 检测到未授权，返回 `402 Payment Required` 状态码，并在响应体（payload）中包含：
+- `access_token_endpoint`：获取访问令牌的端口地址
+- `payment_methods`：支持的收款方式列表（如 EVM/USDC、SVM/USDC 等）
 
-```
+### 2. 支付方式匹配与签名
 
-> 📌 流程图请参考下图（示意图由使用者自行绘制）  
+**Client** 收到 402 响应后：
+1. 根据自己支持的付款方式，与 Server 提供的收款方式进行**匹配**
+2. 选择匹配的支付方式（如 EVM + USDC）
+3. 使用钱包私钥对支付信息进行**签名**，生成符合 **EIP-2612 Permit** 标准的签名数据
+
+### 3. 提交 Permit 获取访问令牌
+
+**Client** 将生成的 Permit 数据放入请求体（body），向 `access_token_endpoint` 发起 POST 请求。
+
+**Server** 收到 Permit 后，进行以下验证：
+- ✅ **owner**（付款地址）是否与 Permit 签名者一致
+- ✅ **spender**（收款地址）是否为 Server 指定的地址
+- ✅ **deadline**（截止时间）是否仍然有效
+- ✅ **signature**（签名）是否合法
+- ✅ **balance**（余额）是否充足
+
+验证通过后：
+- 立即返回 `access_token` 给 Client
+- 同时触发**异步链上结算**（因为区块链交易速度较慢，采用异步处理避免阻塞）
+
+### 4. 使用访问令牌获取资源
+
+**Client** 收到 `access_token` 后：
+- 将 `access_token` 放入 `Authorization` header
+- 重新向收费端口发起 GET 请求
+- **Server** 验证令牌有效性后，返回请求的资源，完成交互
+
+### 5. 链上异步结算
+
+**Server** 在后台使用 Permit 调用智能合约的 `permit()` 和 `transferFrom()` 函数，完成链上资金转移。结算结果可通过交易哈希（tx_hash）在区块链浏览器上查询。
+
+---
+
+## 流程图
+
+> 📌 完整交互流程示意图请参考下图  
 > [图片](../../../assets/work_flow.png)
 
 ---
 
-## 运行说明（Demo）
+## 环境配置
 
-### 1. 安装依赖
+### 依赖安装
 
-本模块使用 `extra` 方式引入依赖：
-
-```bash
-uv sync --extra x402
-```
-
----
-
-### 2. 网络与资产准备
-
-在启动 Demo 前，**强烈建议使用测试网络**：
-
-* 网络：`Sepolia`
-* 资产要求：
-
-  * 测试用 USDC（ERC20）
-  * 少量 Sepolia ETH（用于 Gas）
-
-如果余额不足，可通过官方 Faucet 免费领取。
-
----
-
-### 3. Server 环境配置
-
-配置路径：
-
-```
-x402_mock/servers/env.server
-```
-
-需要提供以下环境变量：
-
-* `INFURA_KEY`
-* `WALLET_ADDRESS`
-* `PRIVATE_KEY`
-
-启动 Server：
+本项目使用 `uv` 作为包管理工具。请在项目根目录下执行：
 
 ```bash
-uv run -m src.terrazip.x402_mock.servers.server
+cd <项目根目录>
+uv sync
 ```
 
-Server 启动后，将监听来自 client 的支付请求。
+### 环境变量配置
+
+在项目**根目录**创建 `.env` 文件，或配置以下环境变量：
+
+#### 必需配置
+
+- **`EVM_PRIVATE_KEY`**（必须）  
+  钱包的私钥，用于签名和链上交易。**请妥善保管，不要泄露！**
+
+#### 可选配置
+
+- **`EVM_INFURA_KEY`**（可选）  
+  Infura API Key。如果未提供，将使用公共节点（速度和稳定性可能较差）。
+
+> 💡 未来将增加更多参数支持，如 `SVM_PRIVATE_KEY` 等。
+
+示例 `.env` 文件：
+
+```env
+EVM_PRIVATE_KEY=your_private_key_here
+EVM_INFURA_KEY=your_infura_key_here  # 可选
+```
+
+### 网络选择建议
+
+**生产环境使用前，强烈建议先在测试网进行充分测试：**
+
+- **测试网推荐**：Sepolia（以太坊）、Mumbai（Polygon）等
+- **测试资产**：可通过各链官方 Faucet 免费领取测试 ETH 和测试 USDC
+- **验证流程**：确认完整支付流程、链上结算、异常处理等功能正常
+
+测试通过后，可切换到主网进行生产部署。
 
 ---
 
-### 4. Client 环境配置
+## 使用示例
 
-配置路径：
+### Server 端最简单代码示例
+
+```python
+# Server 最简单端示例代码
+from src.x402_mock.servers import Http402Server, create_private_key
+
+token_key = create_private_key() # 服务端签名私钥，用于对 access_token 进行签发和验证（非区块链钱包私钥，可由配置提供）
+
+app = Http402Server(
+  token_key=token_key,
+  token_expires_in=300 # access_token到期秒数
+)
+app.add_payment_method(
+    chain_id="eip155:11155111",
+    amount=0.5,
+    currency="USDC",
+) # 接受的收款方式
+
+@app.get("/api/protected-data") # 使用方式继承fastapi
+@app.payment_required # 只要有该装饰器，就代表该端口收费。
+async def get_protected_data(authorization):
+    """This endpoint requires payment to access."""
+    # 这里可以写端口逻辑
+    return {
+        "message": "Payment verified successfully",
+    }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="localhost", port=8000)
 
 ```
-x402_mock/clients/env.client
+
+### Client 端最简单代码示例
+
+```python
+from src.x402_mock.clients.http_client import Http402Client
+from src.x402_mock.adapters.adapters_hub import AdapterHub
+import httpx
+
+async with Http402Client() as client: # 使用方式继承httpx，
+  clinet.add_payment_method(
+            chain_id="eip155:11155111",
+            amount=0.8, # 限制付款金额
+            currency="USDC"
+        ) # 增加付款方式，先设置的付款方式优先匹配。
+  response = client.get("http://localhost:8000/api/protected-data") # 请求资源端口
+
 ```
+* 代码示例:
+[示例example](./example/)
 
-同样需要配置付款方的：
-
-* `INFURA_KEY`
-* `WALLET_ADDRESS`
-* `PRIVATE_KEY`
-
-启动 Client 后：
-
-* Client 将自动发起请求
-* 完成与 Server 的交互
-* 并最终触发链上扣款
-
-无需额外人工操作。
 
 ---
 
 ## 当前状态
 
-* ✅ Client → Server 请求流程
-* ✅ Permit 签名与验证
-* ✅ 链上 USDC 转账，tx_hash 返回可查
-* 🧪 Demo 级可运行实现
+* ✅ 完整的 HTTP 402 支付流程
+* ✅ Client → Server 请求与响应
+* ✅ 支付方式协商与匹配
+* ✅ EIP-2612 Permit 签名与验证
+* ✅ 链上 USDC 转账，tx_hash 可查
+* ✅ 异步链上结算，不阻塞业务
+* 🚀 生产级可运行实现
 
 ---
 
 ## Roadmap
 
-> 以下为规划方向，非承诺时间表
-
-* [ ] 抽象统一的支付接口
-* [ ] 支持更多链（EVM / Non-EVM）
-* [ ] 支持更多资产（Native / ERC20 / Stablecoin）
-* [ ] 引入可生产模式（风控、重试、状态机）
-* [ ] 面向 Agent 的支付 SDK / 协议封装
+* [ ] 支持大部分 EVM 链（Ethereum、Polygon、Arbitrum、Optimism 等）
+* [ ] 支持 EIP-6492（未部署合约的签名验证）
+* [ ] 支持 SVM（Solana Virtual Machine）及 Solana 生态
 
 ---
 
-## 声明
+## 声明与建议
 
-本模块为 **实验性 / 教学用途**，不建议直接用于生产环境。
-如用于真实资产，请自行完成安全审计与风险控制。
+本模块已达到生产可用级别，但在部署到生产环境前，请注意：
+
+⚠️ **强烈建议先在测试网（如 Sepolia）进行充分测试**  
+✅ 确认完整支付流程、异常处理、链上结算等功能符合预期  
+🔒 如用于真实资产，请务必完成安全审计与风险控制  
+💰 建议设置合理的单笔交易限额和风控机制
 
 ---
 

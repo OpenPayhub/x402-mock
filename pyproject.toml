@@ -1,0 +1,28 @@
+[project]
+name = "x402-mock"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "dotenv>=0.9.9",
+    "eth-account>=0.13.7",
+    "fastapi>=0.128.0",
+    "httpx>=0.28.1",
+    "pydantic>=2.12.5",
+    "uvicorn>=0.40.0",
+    "web3>=7.14.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["test"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+

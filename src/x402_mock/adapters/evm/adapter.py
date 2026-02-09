@@ -95,7 +95,7 @@ class EVMAdapter(AdapterFactory):
             confirmation = await adapter.settle(permit)
     """
 
-    def __init__(self, private_key: Optional[str] = None):
+    def __init__(self, private_key: Optional[str] = None, rpc_url: Optional[str] = None, request_timeout: int = 60):
         """
         Initialize EVM Server Adapter with environment-aware configuration.
         
@@ -123,6 +123,7 @@ class EVMAdapter(AdapterFactory):
         """
         # Resolve private key: parameter takes precedence over environment variable
         self._resolved_pk = private_key if private_key else get_private_key_from_env()
+        self._request_timeout = request_timeout
         
         if not self._resolved_pk:
             raise ValueError(
@@ -136,6 +137,7 @@ class EVMAdapter(AdapterFactory):
         
         # Load optional infrastructure key for RPC endpoint construction
         self._infra_key = get_infra_key_from_env()
+        self._rpc_url = rpc_url
 
     def _get_web3_instance(self, chain_id: int) -> AsyncWeb3:
         """
@@ -164,7 +166,7 @@ class EVMAdapter(AdapterFactory):
             balance = await web3.eth.get_balance("0x...")
         """
         # Get RPC URL with infrastructure key consideration
-        rpc_url = get_rpc_url(chain_id, self._infra_key)
+        rpc_url = self._rpc_url or get_rpc_url(chain_id, self._infra_key)
         
         if not rpc_url:
             raise ValueError(
@@ -172,7 +174,10 @@ class EVMAdapter(AdapterFactory):
                 f"Supported chains: Ethereum (1), Sepolia (11155111)"
             )
         
-        return AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(rpc_url))
+        return AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(
+            rpc_url,
+            request_kwargs={"timeout": self._request_timeout}
+        ))
 
     async def signature(
         self,

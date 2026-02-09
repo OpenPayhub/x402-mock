@@ -42,8 +42,8 @@ _EVM_CHAINS_DATA: Dict = {
       "network": "ethereum-mainnet",
       "name": "Ethereum Mainnet",
       "type": "evm",
-      "rpc_url": "https://eth-mainnet.g.alchemy.com/v2/{RPC_KEYS}",
-      "public_rpc_url": "https://eth.public.zph.click",
+      "rpc_url": "https://mainnet.infura.io/v3/{RPC_KEYS}",
+      "public_rpc_url": "https://api.mycryptoapi.com/eth",
       "explorer_url": "https://etherscan.io",
       "assets": {
         "USDC": {
@@ -54,8 +54,40 @@ _EVM_CHAINS_DATA: Dict = {
         }
       }
     },
+    "eip155:8453": {
+      "network": "base-mainnet",
+      "name": "Base Mainnet",
+      "type": "evm",
+      "rpc_url": "https://base-mainnet.infura.io/v3/{RPC_KEYS}",
+      "public_rpc_url": "https://base.gateway.tenderly.co",
+      "explorer_url": "https://basescan.org",
+      "assets": {
+        "USDC": {
+          "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "name": "USD Coin",
+          "decimals": 6,
+          "version": "2"
+        }
+      }
+    },
+    "eip155:137": {
+      "network": "Polygon",
+      "name": "Polygon Mainnet",
+      "type": "evm",
+      "rpc_url": "https://polygon-mainnet.infura.io/v3/{RPC_KEYS}",
+      "public_rpc_url": "https://rpc-mainnet.matic.network",
+      "explorer_url": "https://polygonscan.com",
+      "assets": {
+        "USDC": {
+          "address": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+          "name": "USD Coin",
+          "decimals": 6,
+          "version": "2"
+        }
+      }
+    },
     "eip155:11155111": {
-      "network": "ethereum-sepolia",
+      "network": "Ethereum-Sepolia",
       "name": "Sepolia Testnet",
       "type": "evm",
       "rpc_url": "https://sepolia.infura.io/v3/{RPC_KEYS}",

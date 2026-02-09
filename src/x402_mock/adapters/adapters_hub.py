@@ -40,7 +40,7 @@ class AdapterHub:
     Manages payment component registration and delegates to blockchain-specific adapters.
     """
     
-    def __init__(self, evm_private_key: str = None):
+    def __init__(self, evm_private_key: str = None, rpc_url: Optional[str] = None, request_timeout: int = 60):
         """
         Initialize AdapterHub with registry and adapter mappings.
         
@@ -50,7 +50,7 @@ class AdapterHub:
         
         # Mapping of blockchain types to adapter classes
         self._adapter_factories: dict[str, AdapterFactory] = {
-            "evm": EVMAdapter(private_key=evm_private_key),
+            "evm": EVMAdapter(private_key=evm_private_key, rpc_url=rpc_url, request_timeout=request_timeout),
             # "svm": SolanaAdapter(),
             # Placeholder for future blockchain types # TODO add more blockchain types
         }

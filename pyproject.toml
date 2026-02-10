@@ -1,8 +1,21 @@
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [project]
 name = "x402-mock"
 version = "0.1.0"
-description = "Add your description here"
+authors = [
+  { name="Gengxing Pan", email="xxmuyou78@gmail.com" },
+]
+description = "HTTP 402 payment workflow implementation"
 readme = "README.md"
+license = "Apache-2.0"
+keywords = ["http-402", "payment", "web3", "usdc", "erc20"]
+
 requires-python = ">=3.11"
 dependencies = [
     "dotenv>=0.9.9",
@@ -13,8 +26,18 @@ dependencies = [
     "uvicorn>=0.40.0",
     "web3>=7.14.0",
 ]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Security :: Cryptography",
+]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
@@ -26,3 +49,6 @@ testpaths = ["test"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
+[project.urls]
+Homepage = "https://github.com/OpenPayhub/Terrazipay-python/tree/main/src/terrazip/x402_mock"
+Repository = "https://github.com/OpenPayhub/Terrazipay-python"

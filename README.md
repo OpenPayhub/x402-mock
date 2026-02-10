@@ -87,7 +87,7 @@ After validation passes:
 This project uses `uv` as the package management tool. Execute in the project root directory:
 
 ```bash
-cd <project_root_directory>
+uv add x402-mock
 uv sync
 ```
 
@@ -132,7 +132,7 @@ After testing passes, switch to mainnet for production deployment.
 
 ```python
 # Server minimal example code
-from src.x402_mock.servers import Http402Server, create_private_key
+from x402_mock.servers import Http402Server, create_private_key
 
 token_key = create_private_key() # Server signing private key for issuing and verifying access_token (not blockchain wallet private key, can be provided by configuration)
 
@@ -164,9 +164,8 @@ if __name__ == "__main__":
 ### Client-side Minimal Code Example
 
 ```python
-from src.x402_mock.clients.http_client import Http402Client
-from src.x402_mock.adapters.adapters_hub import AdapterHub
-import httpx
+from x402_mock.clients.http_client import Http402Client
+from x402_mock.adapters.adapters_hub import AdapterHub
 
 async with Http402Client() as client: # Usage inherits from httpx
   clinet.add_payment_method(

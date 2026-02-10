@@ -36,9 +36,11 @@ class Http402Client(httpx.AsyncClient):
     and can be used as an async context manager.
     
     Usage:
+        ```python
         async with Http402Client() as client:
             client.add_payment_method("eip155:11155111", 100.0, "USDC")
             response = await client.get("https://api.example.com/data")
+        ```
     """
     
     def __init__(

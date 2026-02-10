@@ -88,7 +88,7 @@
 本项目使用 `uv` 作为包管理工具。请在项目根目录下执行：
 
 ```bash
-cd <项目根目录>
+uv add x402-mock
 uv sync
 ```
 
@@ -133,7 +133,7 @@ EVM_INFURA_KEY=your_infura_key_here  # 可选
 
 ```python
 # Server 最简单端示例代码
-from src.x402_mock.servers import Http402Server, create_private_key
+from x402_mock.servers import Http402Server, create_private_key
 
 token_key = create_private_key() # 服务端签名私钥，用于对 access_token 进行签发和验证（非区块链钱包私钥，可由配置提供）
 
@@ -165,9 +165,8 @@ if __name__ == "__main__":
 ### Client 端最简单代码示例
 
 ```python
-from src.x402_mock.clients.http_client import Http402Client
-from src.x402_mock.adapters.adapters_hub import AdapterHub
-import httpx
+from x402_mock.clients.http_client import Http402Client
+from x402_mock.adapters.adapters_hub import AdapterHub
 
 async with Http402Client() as client: # 使用方式继承httpx，
   clinet.add_payment_method(

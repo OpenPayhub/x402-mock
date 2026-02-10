@@ -1,0 +1,35 @@
+site_name: x402-mock Documentation
+site_description: HTTP 402 payment workflow implementation
+site_author: Gengxing Pan
+repo_url: https://github.com/OpenPayhub/Terrazipay-python
+repo_name: OpenPayhub/Terrazipay-python
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_root_heading: true
+            show_source: false
+            members_order: source
+            show_if_no_docstring: false
+            docstring_style: google
+            show_signature_annotations: true
+
+nav:
+  - Home: index.md
+  - API Reference: reference.md
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - admonition

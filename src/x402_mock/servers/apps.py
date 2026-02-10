@@ -83,11 +83,13 @@ class Http402Server(FastAPI):
             handler: Async function(event, deps) -> Optional[BaseEvent]
         
         Example:
+            ```python
             async def my_handler(event: TokenIssuedEvent, deps: Dependencies):
                 # Custom logic
                 return None  # or return another event
             
             app.subscribe(TokenIssuedEvent, my_handler)
+            ```
         """
         self.event_bus.subscribe(event_class, handler)
     
@@ -99,10 +101,12 @@ class Http402Server(FastAPI):
             hook: Async function(event, deps) -> None
         
         Example:
+            ```python
             async def log_event(event, deps):
                 print(f"Event: {event}")
             
             app.add_hook(TokenIssuedEvent, log_event)
+            ```
         """
         self.event_bus.hook(event_class, hook)
     
@@ -127,11 +131,13 @@ class Http402Server(FastAPI):
         
         Returns 402 response if payment required, otherwise executes handler with verified payload.
         
-        Usage:
+        Example:
+            ```python
             @app.payment_required
             @app.get("/data")
             async def get_data(payload):
                 return {"user": payload["address"]}
+            ```
         """
         async def wrapper(authorization: str = Header(None)):
             # Execute payment verification chain

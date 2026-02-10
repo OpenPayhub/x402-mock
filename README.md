@@ -91,6 +91,8 @@ uv add x402-mock
 uv sync
 ```
 
+[**Reference**](https://openpayhub.github.io/Terrazipay-python/)
+
 ### Environment Variable Configuration
 
 Create a `.env` file in the project **root directory**, or configure the following environment variables:

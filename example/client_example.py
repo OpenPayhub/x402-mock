@@ -1,5 +1,5 @@
-from src.x402_mock.clients.http_client import Http402Client
-from src.x402_mock.adapters.adapters_hub import AdapterHub
+from x402_mock.clients.http_client import Http402Client
+from x402_mock.adapters.adapters_hub import AdapterHub
 import httpx
 
 pk = "Bearer eyJlxxxxxx" # Replace with actual token

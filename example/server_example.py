@@ -1,5 +1,5 @@
-from src.x402_mock.servers import Http402Server, generate_token
-from src.x402_mock.engine.events import TokenIssuedEvent, SettleSuccessEvent, SettleFailedEvent
+from x402_mock.servers import Http402Server, generate_token
+from x402_mock.engine.events import TokenIssuedEvent, SettleSuccessEvent, SettleFailedEvent
 
 
 pk = "x402mock_private_key_test"

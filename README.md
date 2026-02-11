@@ -91,7 +91,7 @@ uv add x402-mock
 uv sync
 ```
 
-[**Reference**](https://openpayhub.github.io/Terrazipay-python/)
+[**Reference**](https://openpayhub.github.io/x402-mock/)
 
 ### Environment Variable Configuration
 

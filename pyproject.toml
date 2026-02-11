@@ -56,5 +56,6 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
 [project.urls]
-Homepage = "https://github.com/OpenPayhub/Terrazipay-python/tree/main/src/terrazip/x402_mock"
-Repository = "https://github.com/OpenPayhub/Terrazipay-python"
+Homepage = "http://terrazipay.com"
+Repository = "https://github.com/OpenPayhub/x402-mock"
+Reference = "https://openpayhub.github.io/x402-mock/"

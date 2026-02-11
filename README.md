@@ -76,7 +76,7 @@ After validation passes:
 ## Workflow Diagram
 
 > 📌 See the diagram below for complete interaction workflow  
-> [Diagram](../../../assets/work_flow.png)
+> [Diagram](.//assets/402workflow.png)
 
 ---
 

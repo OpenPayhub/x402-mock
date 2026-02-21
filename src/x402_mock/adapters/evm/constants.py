@@ -33,6 +33,13 @@ class ChainConfig(BaseModel):
     explorer_url: str = Field(..., description="Block explorer URL")
     assets: Dict[str, AssetConfig] = Field(default_factory=dict, description="Supported assets")
 
+# ---------------------------------------------------------------------------
+# ERC-1271 constants
+# ---------------------------------------------------------------------------
+
+#: Magic value returned by a valid ERC-1271 ``isValidSignature`` call.
+ERC1271_MAGIC_VALUE: bytes = b"\x16\x26\xba\x7e"
+
 
 # Raw chain configuration data
 # Each chain includes both premium RPC template (with {RPC_KEYS} placeholder) and public RPC fallback.

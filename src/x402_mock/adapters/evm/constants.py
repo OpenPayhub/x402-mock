@@ -7,7 +7,7 @@ and chain state initialization based on permit data.
 """
 
 import os
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 from decimal import Decimal, InvalidOperation
 from pydantic import BaseModel, Field
 
@@ -20,7 +20,7 @@ class AssetConfig(BaseModel):
     address: str = Field(..., description="Token contract address")
     name: str = Field(..., description="Token name")
     decimals: int = Field(..., description="Token decimals")
-    version: str = Field(..., description="EIP2612 permit version")
+    version: str = Field(..., description="EIP712 permit version")
 
 
 class ChainConfig(BaseModel):
@@ -32,6 +32,13 @@ class ChainConfig(BaseModel):
     public_rpc_url: str = Field(..., description="Public RPC endpoint (fallback when no infra key)")
     explorer_url: str = Field(..., description="Block explorer URL")
     assets: Dict[str, AssetConfig] = Field(default_factory=dict, description="Supported assets")
+
+# ---------------------------------------------------------------------------
+# ERC-1271 constants
+# ---------------------------------------------------------------------------
+
+#: Magic value returned by a valid ERC-1271 ``isValidSignature`` call.
+ERC1271_MAGIC_VALUE: bytes = b"\x16\x26\xba\x7e"
 
 
 # Raw chain configuration data
@@ -51,6 +58,12 @@ _EVM_CHAINS_DATA: Dict = {
           "name": "USD Coin",
           "decimals": 6,
           "version": "2"
+        },
+        "USDT": {
+          "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+          "name": "Tether USD",
+          "decimals": 6,
+          "version": "1"
         }
       }
     },
@@ -67,6 +80,12 @@ _EVM_CHAINS_DATA: Dict = {
           "name": "USD Coin",
           "decimals": 6,
           "version": "2"
+        },
+        "USDT": {
+            "address": "0xfde4C96256153236af98292015BA95836c75af0a",
+            "name": "Tether USD",
+            "decimals": 6,
+            "version": "0"
         }
       }
     },
@@ -83,6 +102,12 @@ _EVM_CHAINS_DATA: Dict = {
           "name": "USD Coin",
           "decimals": 6,
           "version": "2"
+        },
+        "USDT": {
+            "address": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+            "name": "Tether USD",
+            "decimals": 6,
+            "version": "0"
         }
       }
     },
@@ -99,6 +124,12 @@ _EVM_CHAINS_DATA: Dict = {
           "name": "USDC",
           "decimals": 6,
           "version": "2"
+        },
+        "USDT": {
+            "address": "0xbDeaD2A70Fe794D2f97b37EFDE497e68974a296d",
+            "name": "USDT",
+            "decimals": 6,
+            "version": "0"
         }
       }
     },
@@ -224,6 +255,44 @@ def is_chain_supported(chain_id: str) -> bool:
         True if chain is supported, False otherwise
     """
     return chain_id in _EVM_CHAINS_DATA
+
+
+def resolve_asset_by_currency(config: ChainConfig, currency: str) -> Tuple[str, AssetConfig]:
+    """
+    Resolve a configured chain asset by currency input.
+
+    The input can be either an asset symbol (e.g. "USDC") or token name
+    (e.g. "USD Coin"), matched case-insensitively.
+
+    Args:
+        config: Chain configuration containing supported assets.
+        currency: Requested asset identifier.
+
+    Returns:
+        Tuple of (asset_symbol, asset_config).
+
+    Raises:
+        ValueError: If currency is empty.
+        KeyError: If the asset is not supported on the chain.
+    """
+    normalized_currency = currency.strip().upper()
+    if not normalized_currency:
+        raise ValueError("Currency must be a non-empty string")
+
+    # Match by symbol first for deterministic behavior
+    if normalized_currency in config.assets:
+        return normalized_currency, config.assets[normalized_currency]
+
+    # Fallback to token name match to keep caller-side usage flexible
+    for symbol, asset in config.assets.items():
+        if asset.name.strip().upper() == normalized_currency:
+            return symbol, asset
+
+    supported_assets = ", ".join(config.assets.keys())
+    raise KeyError(
+        f"Unsupported currency '{currency}' for chain {config.network}. "
+        f"Supported assets: {supported_assets}"
+    )
 
 
 def get_private_key_from_env() -> Optional[str]:

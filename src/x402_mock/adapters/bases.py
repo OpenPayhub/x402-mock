@@ -14,6 +14,7 @@ Different blockchains (EVM, Solana, etc.) will have their own concrete adapter i
 """
 
 from abc import ABC, abstractmethod
+from typing import List
 
 from ..schemas.bases import (
     BasePermit,
@@ -237,7 +238,28 @@ class AdapterFactory(ABC):
         pass
 
 
-    
+
+    async def client_init(self, payment_components: List[BasePaymentComponent]) -> None:
+        """
+        One-time client-side pre-signing initialisation hook.
+
+        Called by AdapterHub.initialize(role="client") once at startup, before
+        any signature() calls are made.  Concrete adapters should override this
+        to perform chain-specific on-chain setup required by the signing role
+        (e.g. ERC-20 allowance approval for Permit2 on EVM, SPL token delegation
+        on SVM).  The default implementation is a no-op so that server-only
+        adapters and future adapters can inherit without modification.
+
+        Args:
+            payment_components: All payment components registered via
+                register_payment_methods(). The implementation may filter
+                these down to the subset it manages.
+
+        Raises:
+            RuntimeError: If any required on-chain setup fails.
+        """
+        pass
+
     @abstractmethod
     def get_wallet_address(self) -> str:
         """

@@ -7,7 +7,7 @@ Manages registration and creation of payment components for different blockchain
 from typing import List
 
 from .evm.schemas import EVMPaymentComponent
-from .evm.constants import get_chain_config, ChainConfig
+from .evm.constants import get_chain_config, ChainConfig, resolve_asset_by_currency
 from .unions import PaymentComponentTypes
 
 
@@ -111,28 +111,24 @@ class PaymentRegistry:
         Returns:
             List of EVMPaymentComponent objects
         """
-        components = []
-        
         # Extract numeric chain ID from CAIP-2 format (e.g., "eip155:1" -> 1)
         numeric_chain_id = int(chain_id.split(":")[-1])
-        
-        # Create component for each supported asset
-        for symbol, asset in config.assets.items():
-            component = EVMPaymentComponent(
-                payment_type='evm',
-                amount=amount,
-                token=asset.address,
-                currency=currency,
-                chain_id=numeric_chain_id,
-                metadata={
-                    "symbol": symbol,
-                    "name": asset.name,
-                    "decimals": asset.decimals,
-                    "network": config.network,
-                    "version": asset.version,
-                    "wallet_address": wallet_address
-                }
-            )
-            components.append(component)
-        
-        return components
+        symbol, asset = resolve_asset_by_currency(config, currency)
+
+        component = EVMPaymentComponent(
+            payment_type='evm',
+            amount=amount,
+            token=asset.address,
+            currency=symbol,
+            chain_id=numeric_chain_id,
+            metadata={
+                "symbol": symbol,
+                "name": asset.name,
+                "decimals": asset.decimals,
+                "network": config.network,
+                "version": asset.version,
+                "wallet_address": wallet_address
+            }
+        )
+
+        return [component]

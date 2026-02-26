@@ -1,82 +1,104 @@
-# x402_mock
+# x402-mock
 
-`x402_mock` is a **production-grade module** that fully implements the **HTTP 402 status code payment workflow**.
+<p align="center">
+  <a href="README.cn.md">
+    <img src="https://img.shields.io/badge/中文版本-blue?style=flat-square&logo=github" alt="中文版本" />
+  </a>
+</p>
+
+> 📚 Protocol primer: [What is EIP / ERC?](./docs/what-is-eip-erc.cn.md) ([English version placeholder](./docs/what-is-eip-erc.en.md))
+
+`x402-mock` is a production-grade module that fully implements the HTTP 402 Payment Required workflow.
 
 ## Module Features
 
-This module completes the full payment workflow based on the **HTTP 402 Payment Required** status code, seamlessly integrating Web2 HTTP protocol with Web3 on-chain payments.
+This module completes the full payment workflow based on the HTTP 402 Payment Required status code, bridging Web2 HTTP with Web3 on-chain payments.
 
-Based on **Web3 + USDC (ERC20)**, this module fully implements the following chain:
+Targeting Web3 + ERC20 (USDC optimized), the implementation covers the full chain:
 
-> **Client (Requester) → Server (Recipient) → On-chain Settlement**
+> Client (requester) → Server (recipient) → On-chain Settlement
 
-Core Features:
-- ✅ Standardized payment protocol based on HTTP 402 status code
-- ✅ EIP-2612 Permit signature, no pre-approval required (gas-less approval)
-- ✅ Asynchronous on-chain settlement without blocking business flow
-- ✅ Support for multiple payment method negotiation and matching
-- 🤖 Designed for **Agent-to-Agent** automated payment scenarios
-
----
-
-## Design Objectives
-
-- 🧪 **Workflow-first**: Focus on x402's interaction and semantics rather than engineering completeness  
-- 🧠 **Understandability**: Minimize hidden logic for easier learning and review  
-- 🤖 **Agent-ready**: Prepare for future agents to automatically initiate/accept/execute payments  
-- 🔌 **Extensibility**: Naturally evolve to support multi-chain, multi-asset, and multi-payment channels  
+Core features:
+- ✅ Standardized payment protocol based on HTTP 402
+- ✅ USDC optimization: upgraded from EIP-2612 to ERC-3009 (`transferWithAuthorization`), combining authorization and transfer in one step to save gas
+- ✅ Generic ERC20 support: Permit2 (`permitTransferFrom`) enabling offline-signed payments for many ERC20 tokens
+- ✅ Asynchronous on-chain settlement to avoid blocking business flows
+- ✅ Support for negotiating and matching multiple payment methods
+- 🤖 Designed for Agent-to-Agent automated payment scenarios
 
 ---
 
-## Complete Interaction Workflow
+## Important Notes (differences vs. Coinbase-style implementations)
 
-### 1. Initial Request (Unauthorized)
+- This implementation does not use a facilitator/relayer; on-chain settlement transactions are broadcast by the operator, therefore the operator pays gas and must provide a usable RPC/Infra key (Infura/Alchemy, etc.).
+- Whitelist mode supported: callers may include a custom `authorization key` that the server verifies before allowing access to paid APIs (this check can be performed before entering the 402/payment flow).
 
-**Client** sends a GET request to **Server**'s paid endpoint with an empty or incorrect `Authorization` header.
+---
 
-**Server** detects unauthorized access, returns `402 Payment Required` status code, and includes in the response payload:
-- `access_token_endpoint`: Endpoint address for obtaining access token
-- `payment_methods`: List of supported payment methods (e.g., EVM/USDC, SVM/USDC, etc.)
+## Design Goals
+
+- 🧪 Workflow-first: emphasize x402 interaction and semantics rather than engineering completeness
+- 🧠 Understandability: minimize hidden logic for easy reading and learning
+- 🤖 Agent-oriented: prepare for future agents to automatically initiate/accept/execute payments
+- 🔌 Extensibility: designed to evolve into multi-chain, multi-asset, multi-payment-channel support
+
+---
+
+## Complete Interaction Flow
+
+### 1. Initial Request (unauthorized)
+
+Client sends a GET request to a paid server endpoint with an empty or incorrect `Authorization` header.
+
+Server detects unauthorized access, returns `402 Payment Required`, and includes in the response payload:
+- `access_token_endpoint`: endpoint to obtain an access token
+- `payment_methods`: list of supported payment methods (e.g., EVM/USDC, SVM/USDC)
 
 ### 2. Payment Method Matching and Signing
 
-**Client** receives the 402 response and:
-1. **Matches** its supported payment methods with Server's offered payment methods
-2. Selects a matching payment method (e.g., EVM + USDC)
-3. Uses wallet private key to **sign** payment information, generating signature data compliant with **EIP-2612 Permit** standard
+Upon receiving the 402 response, the client:
+1. Matches its supported payment methods with the server-provided list
+2. Selects a compatible method (e.g., EVM + USDC)
+3. Uses the wallet private key to produce an offline signature credential for the chosen currency:
+   - USDC: produce an ERC-3009 Authorization for `transferWithAuthorization`
+   - Other ERC20: produce a Permit2 signature for `permitTransferFrom`
 
-### 3. Submit Permit to Obtain Access Token
+### 3. Submit Offline Signature to Obtain Access Token
 
-**Client** places the generated Permit data in the request body and sends a POST request to `access_token_endpoint`.
+Client includes the generated authorization/permit in the POST body to `access_token_endpoint`.
 
-**Server** receives the Permit and performs the following validations:
-- ✅ **owner** (payer address) matches the Permit signer
-- ✅ **spender** (recipient address) matches Server's specified address
-- ✅ **deadline** (expiration time) is still valid
-- ✅ **signature** is legitimate
-- ✅ **balance** is sufficient
+Server validates the submitted credential (fields differ slightly between ERC-3009 and Permit2), including:
+- ✅ `sender`/`owner` (payer address) matches the signature signer
+- ✅ `receiver`/`spender` equals the server-designated recipient address
+- ✅ validity window (e.g., `valid_before` / `deadline`) is still valid
+- ✅ `nonce` has not been used (replay protection)
+- ✅ `signature` is cryptographically valid
+- ✅ balance / authorized amount is sufficient
 
-After validation passes:
-- Immediately returns `access_token` to Client
-- Simultaneously triggers **asynchronous on-chain settlement** (asynchronous processing to avoid blocking due to slow blockchain transactions)
+If validation passes:
+- Immediately return an `access_token` to the client
+- Trigger asynchronous on-chain settlement (transaction submission happens in background to avoid blocking)
 
-### 4. Use Access Token to Obtain Resources
+### 4. Use Access Token to Retrieve Resource
 
-**Client** receives the `access_token` and:
-- Places `access_token` in `Authorization` header
-- Re-requests the paid endpoint with GET
-- **Server** validates token validity and returns requested resources, completing the interaction
+Client places the returned `access_token` into the `Authorization` header and retries the GET request to the paid endpoint.
+
+Server verifies the token and returns the requested resource on success.
 
 ### 5. Asynchronous On-chain Settlement
 
-**Server** uses Permit in the background to call smart contract's `permit()` and `transferFrom()` functions, completing on-chain fund transfer. Settlement results can be queried on blockchain explorer via transaction hash (tx_hash).
+Server performs the on-chain settlement in background:
+- USDC: call `transferWithAuthorization` (ERC-3009) to move funds in a single step
+- Other ERC20: use Permit2's `permitTransferFrom` to complete the transfer
+
+Settlement results (tx hashes) can be inspected on chain explorers.
 
 ---
 
-## Workflow Diagram
+## Flow Diagram
 
-> 📌 See the diagram below for complete interaction workflow  
-> [Diagram](.//assets/402workflow.png)
+See the full interaction diagram in the repository:
+[assets/402workflow.png](assets/402workflow.png)
 
 ---
 
@@ -84,141 +106,127 @@ After validation passes:
 
 ### Dependency Installation
 
-This project uses `uv` as the package management tool. Execute in the project root directory:
+This project uses `uv` as the package manager. From the project root run:
 
 ```bash
 uv add x402-mock
 uv sync
 ```
 
-[**Reference**](https://openpayhub.github.io/x402-mock/)
+Documentation: https://openpayhub.github.io/x402-mock/
 
-### Environment Variable Configuration
+### Environment Variables
 
-Create a `.env` file in the project **root directory**, or configure the following environment variables:
+Create a `.env` file in the project root or export the following variables:
 
-#### Required Configuration
+Required:
+- `EVM_PRIVATE_KEY` — wallet private key for signing and broadcasting transactions. Keep it secret.
 
-- **`EVM_PRIVATE_KEY`** (Required)  
-  Wallet private key for signing and on-chain transactions. **Please keep it safe and do not leak!**
+Optional:
+- `EVM_INFURA_KEY` — Infura or other RPC key. Without it public nodes may be used (slower / less reliable).
 
-#### Optional Configuration
-
-- **`EVM_INFURA_KEY`** (Optional)  
-  Infura API Key. If not provided, public nodes will be used (speed and stability may be poor).
-
-> 💡 More parameters will be added in the future, such as `SVM_PRIVATE_KEY`.
-
-Example `.env` file:
+Example `.env`:
 
 ```env
 EVM_PRIVATE_KEY=your_private_key_here
-EVM_INFURA_KEY=your_infura_key_here  # Optional
+EVM_INFURA_KEY=your_infura_key_here  # optional
 ```
 
-### Network Selection Recommendations
-
-**Before using in production environment, strongly recommend thorough testing on testnet first:**
-
-- **Recommended Testnets**: Sepolia (Ethereum), Mumbai (Polygon), etc.
-- **Test Assets**: Free test ETH and test USDC available from official Faucets of each chain
-- **Verification Process**: Confirm complete payment workflow, on-chain settlement, exception handling, and other functions work properly
-
-After testing passes, switch to mainnet for production deployment.
+Recommended testnets: Sepolia (Ethereum), Mumbai (Polygon). Use faucets for test ETH and test USDC before switching to mainnet.
 
 ---
 
 ## Usage Examples
 
-### Server-side Minimal Code Example
+### Server minimal example
 
 ```python
-# Server minimal example code
+# Server minimal example
 from x402_mock.servers import Http402Server, create_private_key
 
-token_key = create_private_key() # Server signing private key for issuing and verifying access_token (not blockchain wallet private key, can be provided by configuration)
+token_key = create_private_key()  # server signing private key for issuing/verifying access tokens (not on-chain wallet key)
 
 app = Http402Server(
   token_key=token_key,
-  token_expires_in=300 # access_token expiration in seconds
+  token_expires_in=300,  # access_token expiry in seconds
 )
+
 app.add_payment_method(
     chain_id="eip155:11155111",
     amount=0.5,
     currency="USDC",
-) # Accepted payment methods
+)
 
-@app.get("/api/protected-data") # Usage inherits from fastapi
-@app.payment_required # Any endpoint with this decorator requires payment
+@app.get("/api/protected-data")
+@app.payment_required
 async def get_protected_data(authorization):
     """This endpoint requires payment to access."""
-    # Endpoint logic can be written here
-    return {
-        "message": "Payment verified successfully",
-    }
+    return {"message": "Payment verified successfully"}
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="localhost", port=8000)
-
 ```
 
-### Client-side Minimal Code Example
+### Client minimal example
 
 ```python
 from x402_mock.clients.http_client import Http402Client
 from x402_mock.adapters.adapters_hub import AdapterHub
 
-async with Http402Client() as client: # Usage inherits from httpx
-  clinet.add_payment_method(
-            chain_id="eip155:11155111",
-            amount=0.8, # Limit payment amount
-            currency="USDC"
-        ) # Add payment method, earlier configured methods have priority in matching
-  response = client.get("http://localhost:8000/api/protected-data") # Request resource endpoint
+wpk = "your eoa private key"
+ah = AdapterHub(wpk)
 
+async with Http402Client() as client:
+  client.add_payment_method(
+    chain_id="eip155:11155111",
+    amount=0.8,
+    currency="USDC",
+  )
+  await ah.initialize(client_role=True)  # initialize adapters for client role (pre-signing)
+  response = client.get("http://localhost:8000/api/protected-data")
 ```
-* Code Examples:
-[Examples](./example/)
 
+Examples: [example/](example/)
 
 ---
 
 ## Current Status
 
-* ✅ Complete HTTP 402 payment workflow
-* ✅ Client → Server request and response
-* ✅ Payment method negotiation and matching
-* ✅ EIP-2612 Permit signature and verification
-* ✅ On-chain USDC transfer with queryable tx_hash
-* ✅ Asynchronous on-chain settlement without blocking business
-* 🚀 Production-grade implementation
+- ✅ Full HTTP 402 payment workflow
+- ✅ Client → Server request and response
+- ✅ Payment method negotiation and matching
+- ✅ USDC: ERC-3009 offline signature & verification (gas-optimized)
+- ✅ Generic ERC20: Permit2 offline signature & verification
+- ✅ On-chain USDC transfer with tx_hash available
+- ✅ Asynchronous on-chain settlement
 
 ---
 
 ## Roadmap
 
-* [ ] Support for most EVM chains (Ethereum, Polygon, Arbitrum, Optimism, etc.)
-* [ ] Support for EIP-6492 (signature verification for undeployed contracts)
-* [ ] Support for SVM (Solana Virtual Machine) and Solana ecosystem
+- [ ] Cover more EVM chains (Ethereum, Polygon, Arbitrum, Optimism, etc.)
+- [ ] Support smart contract wallet recipients
+- [ ] Support EIP-6492 (undeployed contract signature verification)
+- [ ] Support SVM (Solana Virtual Machine) and Solana ecosystem
 
 ---
 
-## Disclaimer and Recommendations
+## Statement & Recommendations
 
-This module has reached production-ready level, but before deploying to production environment, please note:
+This module is production-capable, but before running with real assets:
 
-⚠️ **Strongly recommend thorough testing on testnet (e.g., Sepolia) first**  
-✅ Confirm complete payment workflow, exception handling, on-chain settlement, and other functions meet expectations  
-🔒 For real asset usage, please ensure security audits and risk controls are completed  
-💰 Recommend setting reasonable per-transaction limits and risk control mechanisms
+- ⚠️ Strongly test thoroughly on testnets (Sepolia, Mumbai)
+- ✅ Verify full payment flow, on-chain settlement, and error handling
+- 🔒 Conduct security audits and risk controls for real assets
+- 💰 Set reasonable per-transaction limits and risk controls
 
 ---
 
-For research on:
+If you are researching:
 
-* x402 protocol
-* Agent economic systems
-* Automated on-chain payments
+- x402 protocol
+- Agent economic systems
+- Automated on-chain payments
 
 Welcome to collaborate and contribute.

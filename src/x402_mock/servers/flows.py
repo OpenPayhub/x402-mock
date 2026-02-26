@@ -96,10 +96,10 @@ async def handle_request_token(
             )
 
         else:
-            return VerifyFailedEvent(error_message=result.get_error_message())
+            return VerifyFailedEvent(error_message=result.get_error_message(), status=result.status)
     
     except (SignatureVerificationError, PaymentVerificationError, Exception) as e:
-        return VerifyFailedEvent(error_message=f"Signature verification failed: {e}")
+        return VerifyFailedEvent(error_message=f"Signature verification failed: {e}", status=result.status)
 
 
 async def handle_verify_success(
@@ -135,10 +135,10 @@ async def handle_settlement(
             return SettleSuccessEvent(settlement_result=settlement)
         
         else:
-            return SettleFailedEvent(error_message=settlement.error_message)
+            return SettleFailedEvent(error_message=settlement.error_message, status=settlement.status)
     
     except (TransactionExecutionError, PaymentVerificationError, Exception) as e:
-        return SettleFailedEvent(error_message=f"Transaction failed: {e}")
+        return SettleFailedEvent(error_message=f"Transaction failed: {e}", status=settlement.status)
 
 
 # ==================== Event Bus Setup ====================

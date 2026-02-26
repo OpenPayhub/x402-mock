@@ -28,9 +28,10 @@ from typing_extensions import Annotated
 from pydantic import Field
 
 from .evm.schemas import (
-    EIP2612Permit,
+    ERC3009Authorization,
     EVMPaymentComponent,
-    EIP2612PermitSignature,
+    Permit2Signature,
+    EVMECDSASignature,
     EVMVerificationResult,
     EVMTransactionConfirmation,
 )
@@ -48,7 +49,8 @@ from ..schemas.bases import (
 # Future: Add SolanaPermit, etc.
 PermitTypes = Annotated[
     Union[
-        EIP2612Permit,  # permit_type: "EIP2612"
+        ERC3009Authorization,  # permit_type: "ERC3009"
+        Permit2Signature,      # permit_type: "Permit2"
     ],
     Field(discriminator='permit_type')
 ]
@@ -72,7 +74,7 @@ PaymentComponentTypes = Annotated[
 # Future: Add SolanaSignature, etc.
 SignatureTypes = Annotated[
     Union[
-        EIP2612PermitSignature,  # signature_type: "EIP2612"
+        EVMECDSASignature,  # signature_type: "EIP2612"
     ],
     Field(discriminator='signature_type')
 ]
@@ -128,7 +130,8 @@ def _initialize_adapter_type_mapping():
     # This maps to the keys used in AdapterHub._adapter_factories
     ADAPTER_TYPE_MAPPING.update({
         "evm": "evm",               # EVM payment_type -> "evm"
-        "EIP2612": "evm",           # EIP-2612 permit_type -> "evm"
+        "ERC3009": "evm",           # ERC-3009 permit_type -> "evm"
+        "Permit2": "evm",           # Permit2 permit_type -> "evm"
         "ethereum": "evm",          # Ethereum chain -> "evm"
         "polygon": "evm",           # Polygon chain -> "evm"
         "arbitrum": "evm",          # Arbitrum chain -> "evm"

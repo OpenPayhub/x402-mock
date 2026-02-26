@@ -10,11 +10,14 @@ The Servers module provides a FastAPI-based server framework for implementing HT
 
 **Key Features:**
 - **FastAPI Integration**: Extended FastAPI application with built-in payment endpoint routes
-- **Token Management**: Secure JWT-based access token generation and verification
+- **Token Management**: Secure HMAC-signed access token generation and verification
 - **Event-Driven Architecture**: Subscribe to payment lifecycle events (request, verification, settlement)
 - **Multi-Chain Support**: Register multiple payment methods across different blockchain networks
 - **Auto-Settlement**: Optional automatic on-chain settlement after successful verification
 - **Security Utilities**: Private key generation, token signing, and environment key management
+- **Modern EVM Signing**:
+  - **USDC**: ERC-3009 (`transferWithAuthorization`)
+  - **Generic ERC20**: Permit2 (`permitTransferFrom`)
 
 **Main Components:**
 - `Http402Server`: Main server class extending FastAPI with payment protocol support
@@ -31,7 +34,7 @@ The Clients module provides an intelligent HTTP client that transparently handle
 **Key Features:**
 - **Transparent Payment Handling**: Automatically processes 402 responses without manual intervention
 - **httpx Compatibility**: Fully compatible drop-in replacement for httpx.AsyncClient
-- **Permit Auto-Signing**: Generates blockchain-specific signed permits using registered payment methods
+- **Offline Signature Auto-Signing**: Generates chain/token-specific offline authorizations (ERC-3009 / Permit2) using registered payment methods
 - **Token Exchange**: Automatically exchanges permits for access tokens at server endpoints
 - **Request Retry**: Seamlessly retries original requests with obtained authorization
 - **Multi-Chain Support**: Register payment capabilities across different blockchain networks
@@ -57,8 +60,8 @@ The Adapters module provides a unified abstraction layer that bridges difference
 - **Blockchain Abstraction**: Unified interface for EVM, SVM (Solana), and other blockchain platforms
 - **Automatic Type Detection**: Identifies blockchain type from chain identifiers (CAIP-2 format)
 - **Signature Operations**: Generate and verify blockchain-specific cryptographic signatures
-- **Permit Validation**: Verify permit authenticity, expiration, nonce, and on-chain conditions
-- **Transaction Settlement**: Execute on-chain transfers with confirmation tracking
+- **Authorization Validation**: Verify authorization authenticity, expiration, nonce, and on-chain conditions
+- **Transaction Settlement**: Execute on-chain transfers with confirmation tracking (ERC-3009 / Permit2 on EVM)
 - **Balance Queries**: Query token balances and allowances across different chains
 - **Extensible Architecture**: Factory pattern enables easy addition of new blockchain adapters
 

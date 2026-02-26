@@ -1,8 +1,8 @@
 site_name: x402-mock Documentation
 site_description: HTTP 402 payment workflow implementation
 site_author: Gengxing Pan
-repo_url: https://github.com/OpenPayhub/Terrazipay-python
-repo_name: OpenPayhub/Terrazipay-python
+repo_url: https://github.com/OpenPayhub/x402-mock
+repo_name: OpenPayhub/x402-mock
 
 theme:
   name: material

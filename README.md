@@ -1,5 +1,11 @@
 # x402-mock
 
+<p align="center">
+  <a href="README.cn.md">
+    <img src="https://img.shields.io/badge/中文版本-blue?style=flat-square&logo=github" alt="中文版本" />
+  </a>
+</p>
+
 > 📚 Protocol primer: [What is EIP / ERC?](./docs/what-is-eip-erc.cn.md) ([English version placeholder](./docs/what-is-eip-erc.en.md))
 
 `x402-mock` is a production-grade module that fully implements the HTTP 402 Payment Required workflow.

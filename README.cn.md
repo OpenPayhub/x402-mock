@@ -1,6 +1,12 @@
 
 # x402-mock
 
+<p align="center">
+  <a href="README.md">
+    <img src="https://img.shields.io/badge/EnglishVersion-blue?style=flat-square&logo=github" alt="English Version" />
+  </a>
+</p>
+
 > 📚 协议入门：[什么是eip erc？](./docs/what-is-eip-erc.cn.md)（[预留英文版](./docs/what-is-eip-erc.en.md)）
 
 `x402-mock` 是一个完整实现 **HTTP 402 状态码支付流程** 的生产级模块。

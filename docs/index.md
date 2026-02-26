@@ -7,8 +7,9 @@ A **production-grade Python module** implementing the HTTP 402 Payment Required 
 `x402_mock` seamlessly integrates **Web2 HTTP protocol** with **Web3 on-chain payments**, enabling automated payment workflows based on the HTTP 402 status code.
 
 **Core Tech Stack:**
-- Web3 + USDC (ERC20)
-- EIP-2612 Permit signatures (gas-less approval)
+- Web3 + ERC20 (USDC optimized)
+- USDC: **ERC-3009** offline authorization (`transferWithAuthorization`)
+- Generic ERC20: **Permit2** offline authorization (`permitTransferFrom`)
 - Asynchronous on-chain settlement
 
 **Payment Flow:**
@@ -19,7 +20,8 @@ Client (Requester) → Server (Recipient) → On-chain Settlement
 ## Key Features
 
 - ✅ Standardized payment protocol based on HTTP 402
-- ✅ EIP-2612 Permit signature, no pre-approval required
+- ✅ USDC gas optimization via ERC-3009 (single-step authorization + transfer)
+- ✅ Broad ERC20 coverage via Permit2 offline signing
 - ✅ Asynchronous on-chain settlement without blocking business flow
 - ✅ Multiple payment method negotiation and matching
 - 🤖 Designed for **Agent-to-Agent** automated payment scenarios
@@ -46,7 +48,7 @@ EVM_INFURA_KEY=your_infura_key_here  # Optional
 - `EVM_PRIVATE_KEY` - Wallet private key for signing and on-chain transactions
 
 **Optional:**
-- `EVM_INFURA_KEY` - Infura API Key (uses public nodes if not provided)
+- `EVM_INFURA_KEY` - RPC/Infra provider key (uses public nodes if not provided)
 
 ## Quick Start
 
@@ -87,6 +89,5 @@ async with Http402Client() as client:
 ## Next Steps
 
 - Check the [API Reference](reference.md) for detailed documentation
-- See the [GitHub Repository](https://github.com/OpenPayhub/Terrazipay-python) for more examples
-- **Source Code:** [`/src/terrazip/x402_mock/`](https://github.com/OpenPayhub/Terrazipay-python/tree/main/src/terrazip/x402_mock) in the main repository
+- See the GitHub repository for more examples: https://github.com/OpenPayhub/x402-mock
 - ⚠️ Test on testnet (e.g., Sepolia) before production use

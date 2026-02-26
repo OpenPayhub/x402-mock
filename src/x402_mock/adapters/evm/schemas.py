@@ -7,8 +7,8 @@ inherit from the base schema hierarchy in ``schemas.bases``.
 Signature classes:
     - EVMECDSASignature: Unified v/r/s signature for EIP-2612 and ERC-3009
       (use ``signature_type`` to distinguish).
-    - Permit2Signature: Packed 65-byte hex signature for Permit2
-      ``permitTransferFrom`` calls.
+    - Permit2Signature: Permit2 ``permitTransferFrom`` authorization with embedded
+      :class:`EVMECDSASignature` (mirrors :class:`ERC3009Authorization` structure).
 
 Permit / authorization classes:
     - EVMTokenPermit: EIP-2612 ``permit()`` authorization (owner, spender,
@@ -17,9 +17,8 @@ Permit / authorization classes:
       (distinct field structure — kept separate).
 
 Result / confirmation classes:
-    - EVMVerificationResult: Verification outcome with on-chain state.
+    - EVMVerificationResult: Unified verification outcome (covers ERC-3009, Permit2, EIP-2612).
     - EVMTransactionConfirmation: Settlement transaction receipt.
-    - ERC3009VerificationResult: Verification outcome for ERC-3009.
     - ERC4337ValidationResult: ``validateUserOp`` result for ERC-4337.
 
 Supporting classes:
@@ -50,8 +49,7 @@ class EVMECDSASignature(BaseSignature):
 
     * ``"EIP2612"`` — EIP-2612 ``permit()`` calls.
     * ``"ERC3009"`` — ERC-3009 ``transferWithAuthorization`` calls.
-    * ``"Permit2"`` — Uniswap Permit2 ``permitTransferFrom`` calls
-      (see :class:`Permit2Signature` for the full payload subclass).
+    * ``"Permit2"`` — Uniswap Permit2 ``permitTransferFrom`` calls.
 
     Attributes:
         signature_type: One of ``"EIP2612"``, ``"ERC3009"``, ``"Permit2"``.
@@ -266,40 +264,27 @@ class EVMPaymentComponent(BasePaymentComponent):
 
 class EVMVerificationResult(BaseVerificationResult):
     """
-    EVM-Specific Permit Verification Result.
-    
-    Extends BaseVerificationResult with EVM-specific verification information.
-    Returned by EVMServerAdapter.verify_signature() method.
-    
+    Unified EVM signature verification result.
+
+    Covers all EVM signing schemes (ERC-3009, Permit2, EIP-2612).  Uses
+    scheme-neutral field names that mirror ``sign_universal`` /
+    ``verify_universal``:
+
     Attributes:
-        verification_type: Always "evm" for this implementation
-        status: Verification result status (inherited from BaseVerificationResult)
-        is_valid: Boolean indicating if verification was successful
-        message: Human-readable status message (inherited from BaseVerificationResult)
-        error_details: Detailed error information if verification failed (inherited from BaseVerificationResult)
-        verified_at: Timestamp when verification was performed (inherited from BaseVerificationResult)
-        permit_owner: Verified permit owner address (EVM address)
-        authorized_amount: Amount verified as authorized (in smallest units)
-        blockchain_state: On-chain state data (nonce, allowance, balance, etc.)
-        on_chain_nonce: Current on-chain nonce counter for owner
-        on_chain_allowance: Current approved allowance amount
-        owner_balance: Token balance of owner address
-    
-    Example:
-        result = await evm_adapter.verify_signature(permit, payment)
-        if result.is_success():
-            print(f"Permit valid. Owner: {result.permit_owner}")
-        else:
-            print(f"Verification failed: {result.get_error_message()}")
+        verification_type: Always ``"evm"``.
+        sender:            Token owner / authorizer address that produced the
+                           signature.
+        receiver:          Destination / authorised spender address.
+        authorized_amount: Transfer amount in the token's smallest unit.
+        blockchain_state:  Optional on-chain state snapshot (balance, nonce,
+                           allowance, etc.).
     """
-    
+
     verification_type: Literal["evm"] = Field(default="evm", description="Verification type identifier")
-    permit_owner: Optional[str] = Field(None, description="Verified permit owner address (EVM address)")
-    authorized_amount: Optional[int] = Field(None, ge=0, description="Verified authorized amount (in smallest units)")
-    blockchain_state: Optional[Dict[str, Any]] = Field(None, description="On-chain state data (nonce, allowance, balance, etc.)")
-    on_chain_nonce: Optional[int] = Field(None, ge=0, description="Current on-chain nonce counter")
-    on_chain_allowance: Optional[int] = Field(None, ge=0, description="Current approved allowance")
-    owner_balance: Optional[int] = Field(None, ge=0, description="Token balance of owner")
+    sender: Optional[str] = Field(None, description="Token owner / authorizer address that produced the signature")
+    receiver: Optional[str] = Field(None, description="Destination / authorised spender address")
+    authorized_amount: Optional[int] = Field(None, ge=0, description="Transfer amount in the token's smallest unit")
+    blockchain_state: Optional[Dict[str, Any]] = Field(None, description="Optional on-chain state snapshot (balance, nonce, allowance, etc.)")
 
 
 class EVMTransactionConfirmation(BaseTransactionConfirmation):
@@ -384,36 +369,6 @@ class ERC3009Authorization(BasePermit):
     signature: Optional[EVMECDSASignature] = Field(None, description="ECDSA signature with signature_type='ERC3009'")
 
 
-class ERC3009VerificationResult(BaseVerificationResult):
-    """
-    Verification result container for ERC-3009 authorizations.
-
-    This model is intended to carry the outcome of a verification pass
-    performed elsewhere (on-chain or off-chain). It holds structured
-    metadata such as on-chain state, resolved owner, amounts and optional
-    error details for inspection by callers.
-
-    Attributes:
-        verification_type: Literal identifier ("ERC3009").
-        authorizer: Resolved authorizer address when available.
-        recipient: Resolved recipient address when available.
-        authorized_amount: Amount proven/authorized in smallest units.
-        valid_after: Authorization valid after timestamp.
-        valid_before: Authorization valid before timestamp.
-        nonce: Nonce associated with the authorization.
-        blockchain_state: Optional on-chain state (allowance, nonce, balance).
-    """
-
-    verification_type: Literal["ERC3009"] = Field(default="ERC3009", description="Verification type identifier")
-    authorizer: Optional[str] = Field(None, description="Resolved authorizer address")
-    recipient: Optional[str] = Field(None, description="Resolved recipient address")
-    authorized_amount: Optional[int] = Field(None, ge=0, description="Amount authorized in smallest units")
-    valid_after: Optional[int] = Field(None, ge=0, description="Start timestamp for validity")
-    valid_before: Optional[int] = Field(None, ge=0, description="Expiry timestamp for validity")
-    nonce: Optional[str] = Field(None, description="Authorization nonce (bytes32 hex string)")
-    blockchain_state: Optional[Dict[str, Any]] = Field(None, description="Optional on-chain state snapshot (nonce, allowance, balance)")
-
-
 class UserOperationModel(CanonicalModel):
     """
     Minimal EIP-4337 `UserOperation` structure as a Pydantic model.
@@ -495,20 +450,20 @@ class ERC4337ValidationResult(BaseVerificationResult):
     # ERC-1271 (contract-based signature) details when encountered during
 
 
-class Permit2Signature(EVMECDSASignature):
+class Permit2Signature(BasePermit):
     """
     Permit2 ``permitTransferFrom`` authorization payload.
 
-    Extends :class:`EVMECDSASignature` (v, r, s) with the EIP-712 permit
-    fields required for a Permit2 settlement call.  The ``signature_type``
-    is fixed to ``"Permit2"``.
+    Mirrors the structure of :class:`ERC3009Authorization`: inherits
+    :class:`BasePermit` and embeds the ECDSA signature as a separate
+    :class:`EVMECDSASignature` object rather than mixing v/r/s directly
+    into the permit fields.
 
     EIP-712 domain: name="Permit2", chainId=``chain_id``,
     verifyingContract=``permit2_address``.
 
     Attributes:
-        signature_type: Always ``"Permit2"``.
-        v, r, s: Inherited ECDSA components (see :class:`EVMECDSASignature`).
+        permit_type: Always ``"Permit2"``.
         owner: Token owner address that produced the signature.
         spender: Address authorized to call ``permitTransferFrom``.
         token: ERC-20 token contract address.
@@ -518,22 +473,23 @@ class Permit2Signature(EVMECDSASignature):
         chain_id: EVM network ID (e.g. 1=Mainnet, 11155111=Sepolia).
         permit2_address: Permit2 contract address (defaults to canonical
             Uniswap deployment).
-
-    Use :meth:`to_packed_hex` (inherited) to get the ``bytes`` argument
-    for the on-chain ``permitTransferFrom`` call.
+        signature: ECDSA signature (``signature_type='Permit2'``) produced
+            by the token owner; ``None`` before signing.
 
     Example::
 
         sig = Permit2Signature(
-            v=27, r="0x" + "a" * 64, s="0x" + "b" * 64,
             owner="0xAbCd...1234", spender="0xServer...Addr",
             token="0xA0b8...eB48", amount=1_000_000,
             nonce=0, deadline=1_900_000_000, chain_id=11155111,
+            signature=EVMECDSASignature(
+                signature_type="Permit2",
+                v=27, r="0x" + "a" * 64, s="0x" + "b" * 64,
+            ),
         )
-        packed = sig.to_packed_hex()   # ready for on-chain submission
     """
 
-    signature_type: Literal["Permit2"] = Field(default="Permit2", description="Always 'Permit2'")
+    permit_type: Literal["Permit2"] = Field(default="Permit2", description="Authorization type identifier")
     owner: str = Field(..., description="Token owner address (0x-prefixed, 42 chars)")
     spender: str = Field(..., description="Address authorized to call permitTransferFrom")
     token: str = Field(..., description="ERC-20 token contract address")
@@ -545,14 +501,17 @@ class Permit2Signature(EVMECDSASignature):
         default="0x000000000022D473030F116dDEE9F6B43aC78BA3",
         description="Permit2 singleton contract address (defaults to canonical Uniswap deployment)",
     )
+    signature: Optional[EVMECDSASignature] = Field(
+        None, description="ECDSA signature with signature_type='Permit2'"
+    )
 
-    def validate_format(self) -> bool:
+    def validate_structure(self) -> bool:
         """
-        Validate v/r/s components and all EVM address fields.
+        Validate permit fields and embedded signature.
 
-        Calls the parent :meth:`EVMECDSASignature.validate_format` for v/r/s,
-        then checks that ``owner``, ``spender``, ``token``, and
-        ``permit2_address`` are valid 0x-prefixed 42-character EVM addresses.
+        Checks that ``owner``, ``spender``, ``token``, and ``permit2_address``
+        are valid 0x-prefixed 42-character EVM addresses, and that the
+        attached :class:`EVMECDSASignature` passes its own format validation.
 
         Returns:
             True when all checks pass.
@@ -560,8 +519,6 @@ class Permit2Signature(EVMECDSASignature):
         Raises:
             ValueError: Descriptive message on the first failed check.
         """
-        super().validate_format()
-
         for field_name, address in [
             ("owner", self.owner),
             ("spender", self.spender),
@@ -577,33 +534,10 @@ class Permit2Signature(EVMECDSASignature):
             except ValueError:
                 raise ValueError(f"'{field_name}' contains non-hex characters: {address!r}")
 
+        if self.signature is not None:
+            try:
+                self.signature.validate_format()
+            except ValueError as e:
+                raise ValueError(f"Signature validation failed: {e}")
+
         return True
-
-
-class Permit2VerificationResult(BaseVerificationResult):
-    """
-    Verification result for a Permit2 ``permitTransferFrom`` authorization.
-
-    Mirrors :class:`ERC3009VerificationResult` but uses Permit2-specific
-    field names: ``owner`` / ``spender`` instead of
-    ``authorizer`` / ``recipient``, and a single integer ``deadline`` and
-    ``nonce`` instead of the dual ``valid_after``/``valid_before`` window
-    and a bytes32 nonce string.
-
-    Attributes:
-        verification_type: Literal ``"Permit2"``.
-        owner:             Token owner address that signed the permit.
-        spender:           Address authorised to call ``permitTransferFrom``.
-        authorized_amount: Transfer amount in the token's smallest unit.
-        deadline:          Unix timestamp after which the permit is invalid.
-        nonce:             Integer Permit2 nonce for ``owner``.
-        blockchain_state:  Optional snapshot of on-chain state (e.g. balance).
-    """
-
-    verification_type: Literal["Permit2"] = Field(default="Permit2", description="Verification type identifier")
-    owner: Optional[str] = Field(None, description="Token owner address that signed the permit")
-    spender: Optional[str] = Field(None, description="Address authorised to call permitTransferFrom")
-    authorized_amount: Optional[int] = Field(None, ge=0, description="Transfer amount in the token's smallest unit")
-    deadline: Optional[int] = Field(None, ge=0, description="Unix timestamp after which the permit is invalid")
-    nonce: Optional[int] = Field(None, ge=0, description="Permit2 integer nonce for owner")
-    blockchain_state: Optional[Dict[str, Any]] = Field(None, description="Optional on-chain state snapshot (balance, etc.)")

@@ -25,6 +25,7 @@ Architecture:
 """
 
 from typing import List, Optional, Union, Any, Dict
+from pydantic import TypeAdapter
 
 from .registry import PaymentRegistry
 from .unions import PermitTypes, PaymentComponentTypes, get_adapter_type
@@ -47,13 +48,17 @@ class AdapterHub:
         Sets up payment registry and registers EVM adapter with BlockchainDetector.
         """
         self._registry = PaymentRegistry()
-        
+
         # Mapping of blockchain types to adapter classes
         self._adapter_factories: dict[str, AdapterFactory] = {
             "evm": EVMAdapter(private_key=evm_private_key, rpc_url=rpc_url, request_timeout=request_timeout),
             # "svm": SolanaAdapter(),
             # Placeholder for future blockchain types # TODO add more blockchain types
         }
+
+        # Tracks whether initialize() has been called for the client role.
+        # signature() refuses to proceed until this flag is set.
+        self._client_initialized: bool = False
     
     # =========================================================================
     # Payment Component Management Methods
@@ -90,11 +95,38 @@ class AdapterHub:
     def get_payment_methods(self) -> List[PaymentComponentTypes]:
         """
         Get all registered payment methods.
-        
+
         Returns:
             List of registered payment components
         """
         return self._registry.get_support_list()
+
+    async def initialize(self, client_role: bool = False) -> None:
+        """
+        One-time startup initialisation gated by caller role.
+
+        Must be called once before signature() when operating as the signing
+        party (client).  For each registered adapter, the chain-specific
+        ``client_init()`` hook is invoked so it can ensure any required
+        on-chain state is in place (e.g. Permit2 ERC-20 allowances for EVM).
+
+        Server-side roles (verify_signature / settle) do not require this call
+        and may pass ``client_role=False`` to skip the adapter hooks while still
+        marking the hub as initialised for completeness.
+
+        Args:
+            client_role: ``True`` triggers adapter pre-signing setup;
+                         ``False`` (default) skips the hooks (no on-chain writes needed).
+
+        Raises:
+            RuntimeError: If any adapter's client_init() fails.
+        """
+        if client_role:
+            payment_components = self._registry.get_support_list()
+            for adapter in self._adapter_factories.values():
+                await adapter.client_init(payment_components)
+
+        self._client_initialized = True
     
     async def verify_signature(
         self,
@@ -117,7 +149,7 @@ class AdapterHub:
             ValueError: If payload conversion or token matching fails
         """
         # Convert permit payload to typed model
-        permit = PermitTypes.model_validate(permit_payload)
+        permit = TypeAdapter(PermitTypes).validate_python(permit_payload)
         if not permit:
             raise ValueError("Failed to convert permit payload")
         
@@ -166,7 +198,7 @@ class AdapterHub:
             ValueError: If payload conversion fails
         """
         # Convert payload to typed model
-        permit = PermitTypes.model_validate(permit_payload)
+        permit = TypeAdapter(PermitTypes).validate_python(permit_payload)
         if not permit:
             raise ValueError("Failed to convert permit payload")
         
@@ -185,20 +217,26 @@ class AdapterHub:
     async def signature(self, list_components: List[Union[PaymentComponentTypes, Dict[str, Any]]]) -> PermitTypes:
         """
         Generate signed permit from remote payment components.
-        
+
         Matches remote components against local support list, converts to typed model,
         and delegates to blockchain-specific adapter for signing.
-        
+
         Args:
             list_components: Remote payment components (typed or dict) to match
-        
+
         Returns:
             Signed permit from adapter
-        
+
         Raises:
+            RuntimeError: If initialize() has not been called (client-side guard).
             ValueError: If no matching component found or conversion fails
             TypeError: If blockchain type cannot be determined
         """
+        if not self._client_initialized:
+            raise RuntimeError(
+                "AdapterHub is not initialised. "
+                "Call 'await hub.initialize()' once at startup before signing."
+            )
         # Match remote component with local support list
         local_components = self.get_payment_methods()
         matched_component = match_payment_component(list_components, local_components)

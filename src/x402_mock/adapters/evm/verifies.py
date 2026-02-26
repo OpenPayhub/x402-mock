@@ -22,9 +22,11 @@ verify_erc3009_eoa
 """
 
 import time
-from typing import Any, Dict, Literal, Optional, Union
+from typing import Any, Dict, Literal, Optional, Union, Tuple
 
 from eth_account import Account
+from web3.exceptions import Web3Exception
+from web3 import AsyncWeb3
 
 try:
     from eth_account.messages import encode_typed_data as _encode_typed_data
@@ -45,7 +47,8 @@ from .standards import (
     Permit2TypedData,
     ERC1271ABI,
 )
-from .schemas import ERC3009VerificationResult, Permit2VerificationResult
+from .ERC20_ABI import get_allowance_abi
+from .schemas import EVMVerificationResult
 from ...schemas.bases import VerificationStatus
 from .constants import ERC1271_MAGIC_VALUE
 
@@ -54,14 +57,14 @@ from .constants import ERC1271_MAGIC_VALUE
 # ---------------------------------------------------------------------------
 
 
-def _verify_eip712_signature(
+async def _verify_eip712_signature(
     signable,
     *,
     v: int,
     r: str,
     s: str,
     authorizer: str,
-    w3=None,
+    w3: Optional[AsyncWeb3] = None,
 ) -> bool:
     """
     Verify an EIP-712 ``signable`` against ``authorizer``.
@@ -108,7 +111,8 @@ def _verify_eip712_signature(
         )
         try:
             contract = w3.eth.contract(address=authorizer, abi=ERC1271ABI().to_list())
-            result: bytes = contract.functions.isValidSignature(msg_hash, sig_bytes).call()
+
+            result: bytes = await contract.functions.isValidSignature(msg_hash, sig_bytes).call()
             return result == ERC1271_MAGIC_VALUE
         except Exception:
             return False
@@ -187,7 +191,7 @@ def _build_erc3009_typed_data_dict(
 # ERC-3009 EOA verification
 # ---------------------------------------------------------------------------
 
-def verify_erc3009(
+async def verify_erc3009(
     *,
     token: str,
     chain_id: int,
@@ -206,7 +210,7 @@ def verify_erc3009(
     on_chain_nonce: Optional[str] = None,
     current_time: Optional[int] = None,
     w3=None,
-) -> ERC3009VerificationResult:
+) -> EVMVerificationResult:
     """
     Verify an ERC-3009 ``transferWithAuthorization`` signed by an EOA or a smart-contract wallet (ERC-1271).
 
@@ -261,7 +265,7 @@ def verify_erc3009(
                         smart-contract wallet (e.g. Safe, Argent) support.
 
     Returns:
-        ``ERC3009VerificationResult`` with all diagnostic fields populated.
+        ``EVMVerificationResult`` with all diagnostic fields populated.
         ``is_valid=True`` and ``status=SUCCESS`` only when every check passes.
 
     Example::
@@ -308,19 +312,15 @@ def verify_erc3009(
         status: VerificationStatus,
         message: str,
         error_details: Optional[Dict[str, Any]] = None,
-    ) -> ERC3009VerificationResult:
-        return ERC3009VerificationResult(
-            verification_type="ERC3009",
+    ) -> EVMVerificationResult:
+        return EVMVerificationResult(
             status=status,
             is_valid=False,
             message=message,
             error_details=error_details,
-            authorizer=authorizer,
-            recipient=recipient,
+            sender=authorizer,
+            receiver=recipient,
             authorized_amount=value,
-            valid_after=valid_after,
-            valid_before=valid_before,
-            nonce=nonce,
             blockchain_state=blockchain_state or None,
         )
 
@@ -382,6 +382,7 @@ def verify_erc3009(
     # ------------------------------------------------------------------
     # 5. Signature verification (EOA ECDSA or ERC-1271 smart-contract wallet)
     # ------------------------------------------------------------------
+
     try:
         typed_data_dict = _build_erc3009_typed_data_dict(
             token=token,
@@ -396,7 +397,7 @@ def verify_erc3009(
             domain_version=domain_version,
         )
         signable = encode_typed_data(typed_data_dict)
-        sig_verified = _verify_eip712_signature(
+        sig_verified = await _verify_eip712_signature(
             signable, v=v, r=r, s=s, authorizer=authorizer, w3=w3
         )
     except Exception as exc:
@@ -416,17 +417,13 @@ def verify_erc3009(
     # ------------------------------------------------------------------
     # All checks passed.
     # ------------------------------------------------------------------
-    return ERC3009VerificationResult(
-        verification_type="ERC3009",
+    return EVMVerificationResult(
         status=VerificationStatus.SUCCESS,
         is_valid=True,
         message="Authorization valid: signer verified as authorizer.",
-        authorizer=authorizer,
-        recipient=recipient,
+        sender=authorizer,
+        receiver=recipient,
         authorized_amount=value,
-        valid_after=valid_after,
-        valid_before=valid_before,
-        nonce=nonce,
         blockchain_state=blockchain_state or None,
     )
 
@@ -435,7 +432,7 @@ def verify_erc3009(
 # Permit2 verification
 # ---------------------------------------------------------------------------
 
-def verify_permit2(
+async def verify_permit2(
     *,
     owner: str,
     spender: str,
@@ -451,7 +448,7 @@ def verify_permit2(
     owner_balance: Optional[int] = None,
     current_time: Optional[int] = None,
     w3=None,
-) -> Permit2VerificationResult:
+) -> EVMVerificationResult:
     """
     Verify a Permit2 ``permitTransferFrom`` authorization.
 
@@ -487,7 +484,7 @@ def verify_permit2(
                          smart-contract wallet fallback.
 
     Returns:
-        ``Permit2VerificationResult`` with all diagnostic fields populated.
+        ``EVMVerificationResult`` with all diagnostic fields populated.
     """
     now = int(current_time) if current_time is not None else int(time.time())
 
@@ -499,18 +496,15 @@ def verify_permit2(
         status: VerificationStatus,
         message: str,
         error_details: Optional[Dict[str, Any]] = None,
-    ) -> Permit2VerificationResult:
-        return Permit2VerificationResult(
-            verification_type="Permit2",
+    ) -> EVMVerificationResult:
+        return EVMVerificationResult(
             status=status,
             is_valid=False,
             message=message,
             error_details=error_details,
-            owner=owner,
-            spender=spender,
+            sender=owner,
+            receiver=spender,
             authorized_amount=amount,
-            deadline=deadline,
-            nonce=nonce,
             blockchain_state=blockchain_state or None,
         )
 
@@ -543,6 +537,17 @@ def verify_permit2(
     # ------------------------------------------------------------------
     # 3. Balance sufficiency
     # ------------------------------------------------------------------
+
+    allowance = await query_erc20_allowance(
+        w3=w3, token_addr=token, owner=owner, spender=permit2_address
+    )
+    if allowance < int(amount):
+        return _fail(
+            VerificationStatus.INSUFFICIENT_ALLOWANCE,
+            f"Insufficient allowance: current allowance={allowance} < amount={amount}.",
+            {"allowance": allowance, "amount": amount},
+        )
+    
     if owner_balance is not None and int(owner_balance) < int(amount):
         return _fail(
             VerificationStatus.INSUFFICIENT_BALANCE,
@@ -564,7 +569,7 @@ def verify_permit2(
             deadline=deadline,
         ).to_dict()
         signable = encode_typed_data(typed_data_dict)
-        sig_verified = _verify_eip712_signature(
+        sig_verified = await _verify_eip712_signature(
             signable, v=v, r=r, s=s, authorizer=owner, w3=w3
         )
     except Exception as exc:
@@ -584,153 +589,213 @@ def verify_permit2(
     # ------------------------------------------------------------------
     # All checks passed.
     # ------------------------------------------------------------------
-    return Permit2VerificationResult(
-        verification_type="Permit2",
+    return EVMVerificationResult(
         status=VerificationStatus.SUCCESS,
         is_valid=True,
         message="Permit valid: signer verified as owner.",
-        owner=owner,
-        spender=spender,
+        sender=owner,
+        receiver=spender,
         authorized_amount=amount,
-        deadline=deadline,
-        nonce=nonce,
         blockchain_state=blockchain_state or None,
     )
+
+
+async def query_erc20_allowance(w3: AsyncWeb3, token_addr: str, owner: str, spender: str) -> int:
+    """
+    Retrieves the amount of tokens that an owner allowed a spender to withdraw.
+
+    This function calls the 'allowance(address,address)' constant method of an ERC20 
+    smart contract. It performs checksum address conversion and handles potential 
+    exceptions during the RPC call.
+
+    Args:
+        w3 (AsyncWeb3): The Web3 instance connected to the target blockchain.
+        token_addr (str): The contract address of the ERC20 token.
+        owner (str): The address of the token holder.
+        spender (str): The address authorized to spend the tokens.
+
+    Returns:
+        int: The remaining allowance amount in the token's base units (e.g., wei).
+
+    Raises:
+        ValueError: If any provided address is not a valid hex address.
+        Web3Exception: If the contract call fails or the node returns an error.
+        Exception: For any other unexpected errors during execution.
+    """
+    erc20_abi = get_allowance_abi()
+
+    try:
+        # Checksum conversion (raises ValueError if invalid)
+        checksum_token = w3.to_checksum_address(token_addr)
+        checksum_owner = w3.to_checksum_address(owner)
+        checksum_spender = w3.to_checksum_address(spender)
+
+        contract = w3.eth.contract(address=checksum_token, abi=erc20_abi)
+        
+        # Execute call (raises Web3Exception or specific RPC errors)
+        allowance = await contract.functions.allowance(checksum_owner, checksum_spender).call()
+        return int(allowance)
+
+    except Web3Exception as e:
+        # Detailed context for RPC/Contract errors
+        raise Web3Exception(
+            f"Failed to query allowance for token {token_addr}. "
+            f"Owner: {owner}, Spender: {spender}. Error: {e}"
+        )
+    except Exception as e:
+        # Catch-all for unexpected issues (e.g., encoding errors)
+        raise RuntimeError(f"An unexpected error occurred: {e}")
+
 
 
 # ---------------------------------------------------------------------------
 # Universal verifier
 # ---------------------------------------------------------------------------
 
-def verify_universal(
+async def verify_universal(
     *,
-    # --- Signature components (required for both schemes) ---
+    # ---- Required: signature components --------------------------------
     v: int,
     r: str,
     s: str,
+    # ---- Required: shared fields ----------------------------------------
     chain_id: int,
-    # --- Scheme selector: auto-detected when None ---
-    # "erc3009" is selected when domain_name is provided;
-    # "permit2" is selected when deadline is provided without domain_name.
+    token: str,
+    sender: str,           # authorizer (ERC-3009) / owner (Permit2)
+    receiver: str,         # recipient  (ERC-3009) / spender (Permit2)
+    amount: int,
+    deadline: int,         # valid_before (ERC-3009) / deadline (Permit2)
+    nonce: Union[int, str],  # bytes32 hex / int accepted for both schemes
+    # ---- Scheme discriminator -------------------------------------------
+    # Providing domain_name selects ERC-3009; omitting it selects Permit2.
     scheme: Optional[Literal["erc3009", "permit2"]] = None,
-    # --- ERC-3009 fields ---
-    token: Optional[str] = None,
-    authorizer: Optional[str] = None,
-    recipient: Optional[str] = None,
-    value: Optional[int] = None,
-    valid_after: Optional[int] = None,
-    valid_before: Optional[int] = None,
-    nonce: Optional[Any] = None,          # str (bytes32) for ERC-3009, int for Permit2
-    domain_name: Optional[str] = None,
-    domain_version: Optional[str] = None,
-    on_chain_nonce: Optional[str] = None,
-    # --- Permit2 fields ---
-    owner: Optional[str] = None,
-    spender: Optional[str] = None,
-    amount: Optional[int] = None,
-    deadline: Optional[int] = None,
+    # ---- Optional overrides (sensible defaults provided) ----------------
+    domain_name: Optional[str] = None,   # required for ERC-3009
+    domain_version: str = "2",
+    valid_after: int = 0,
+    on_chain_nonce: Optional[str] = None,  # ERC-3009 replay detection only
     permit2_address: str = "0x000000000022D473030F116dDEE9F6B43aC78BA3",
-    # --- Shared optional fields ---
+    # ---- Shared optional ------------------------------------------------
     owner_balance: Optional[int] = None,
     current_time: Optional[int] = None,
     w3=None,
-) -> Union[ERC3009VerificationResult, Permit2VerificationResult]:
+) -> EVMVerificationResult:
     """
     Unified entry point for ERC-3009 and Permit2 signature verification.
 
+    Uses the same homogeneous parameter names as ``sign_universal``:
+
+    +-----------+-------------------+-----------+
+    | Unified   | ERC-3009          | Permit2   |
+    +===========+===================+===========+
+    | sender    | authorizer        | owner     |
+    +-----------+-------------------+-----------+
+    | receiver  | recipient         | spender   |
+    +-----------+-------------------+-----------+
+    | amount    | value             | amount    |
+    +-----------+-------------------+-----------+
+    | deadline  | valid_before      | deadline  |
+    +-----------+-------------------+-----------+
+    | nonce     | bytes32 hex / int | int       |
+    +-----------+-------------------+-----------+
+
     Scheme selection
     ----------------
-    Pass ``scheme="erc3009"`` or ``scheme="permit2"`` to be explicit.
-    When ``scheme`` is omitted the function auto-detects:
-
-    - ``domain_name`` present  →  ERC-3009
-    - ``deadline`` present, ``domain_name`` absent  →  Permit2
-    - Neither present  →  ``ValueError``
+    - ``domain_name`` provided, or ``scheme="erc3009"``  →  ERC-3009
+    - ``domain_name`` absent,  or ``scheme="permit2"``   →  Permit2
 
     Parameters
     ----------
-    v, r, s :       ECDSA signature components (required for both schemes).
-    chain_id :      EVM network ID.
-    scheme :        Optional explicit scheme selector.
-    token :         ERC-20 token address (ERC-3009 domain / Permit2 token field).
-    authorizer :    ERC-3009 signer address (``from``).
-    recipient :     ERC-3009 destination address (``to``).
-    value :         ERC-3009 transfer amount.
-    valid_after :   ERC-3009 start timestamp.
-    valid_before :  ERC-3009 expiry timestamp.
-    nonce :         ``str`` (bytes32) for ERC-3009; ``int`` for Permit2.
-    domain_name :   EIP-712 domain name (ERC-3009 only, e.g. ``"USD Coin"``).
-    domain_version: EIP-712 domain version (ERC-3009 only, e.g. ``"2"``).
-    on_chain_nonce: On-chain nonce for replay detection (ERC-3009 only).
-    owner :         Permit2 token owner / signer address.
-    spender :       Permit2 authorised spender address.
-    amount :        Permit2 transfer amount.
-    deadline :      Permit2 expiry timestamp.
-    permit2_address:Permit2 singleton contract address.
-    owner_balance : Optional token balance of the signer for a balance check.
-    current_time :  Optional Unix timestamp (defaults to ``int(time.time())``).
-    w3 :            Optional ``web3.Web3`` instance for ERC-1271 fallback.
+    v, r, s :        ECDSA signature components.
+    chain_id :       EVM network ID.
+    token :          ERC-20 token contract address.
+    sender :         Signer / token owner address.
+    receiver :       Destination / authorised spender address.
+    amount :         Transfer amount in the token's smallest unit.
+    deadline :       Expiry Unix timestamp (``valid_before`` for ERC-3009).
+    nonce :          Replay-protection nonce — bytes32 hex string or int.
+                     ERC-3009 uses ``str``; Permit2 uses ``int``;
+                     both formats are accepted and normalised internally.
+    scheme :         Optional explicit scheme override.
+    domain_name :    EIP-712 domain name (required for ERC-3009).
+    domain_version : EIP-712 domain version; defaults to ``"2"``.
+    valid_after :    ERC-3009 start timestamp; defaults to ``0``.
+    on_chain_nonce : ERC-3009 on-chain nonce for replay detection (optional).
+    permit2_address: Permit2 singleton contract address.
+    owner_balance :  Optional token balance for a sufficiency check.
+    current_time :   Optional Unix timestamp (defaults to ``int(time.time())``).
+    w3 :             Optional ``web3.Web3`` instance for ERC-1271 fallback.
 
     Returns
     -------
-    ``ERC3009VerificationResult`` or ``Permit2VerificationResult`` depending
-    on the resolved scheme.
+    ``EVMVerificationResult``.
 
     Raises
     ------
     ValueError
-        When the scheme cannot be inferred or required fields are missing.
+        If ERC-3009 is selected but ``domain_name`` is not provided.
+
+    Examples
+    --------
+    ERC-3009::
+
+        result = verify_universal(
+            v=auth.signature.v, r=auth.signature.r, s=auth.signature.s,
+            chain_id=1, token="0xA0b869...",
+            sender="0xFrom", receiver="0xTo",
+            amount=1_000_000, deadline=1_900_000_000,
+            nonce=auth.nonce, domain_name="USD Coin",
+        )
+
+    Permit2::
+
+        result = verify_universal(
+            v=sig.v, r=sig.r, s=sig.s,
+            chain_id=1, token="0xA0b869...",
+            sender="0xOwner", receiver="0xSpender",
+            amount=1_000_000, deadline=1_900_000_000,
+            nonce=sig.nonce,
+        )
     """
-    # ---- Resolve scheme ----
-    resolved = scheme
-    if resolved is None:
-        if domain_name is not None:
-            resolved = "erc3009"
-        elif deadline is not None:
-            resolved = "permit2"
-        else:
+    resolved_scheme = scheme or ("erc3009" if domain_name is not None else "permit2")
+
+    if resolved_scheme.lower() == "erc3009":
+        if domain_name is None:
             raise ValueError(
-                "Cannot infer scheme: supply 'domain_name' for ERC-3009, "
-                "'deadline' for Permit2, or set 'scheme' explicitly."
+                "ERC-3009 requires 'domain_name' (the EIP-712 domain name "
+                "registered in the token contract, e.g. \"USD Coin\")."
             )
 
-    if resolved == "erc3009":
-        # Validate required ERC-3009 fields
-        missing = [
-            name for name, val in [
-                ("token", token), ("authorizer", authorizer),
-                ("recipient", recipient), ("value", value),
-                ("valid_after", valid_after), ("valid_before", valid_before),
-                ("nonce", nonce), ("domain_name", domain_name),
-                ("domain_version", domain_version),
-            ] if val is None
-        ]
-        if missing:
-            raise ValueError(f"ERC-3009 verification missing required fields: {missing}")
+        # Normalise nonce → bytes32 hex string.
+        erc3009_nonce: str
+        if isinstance(nonce, int):
+            erc3009_nonce = "0x" + nonce.to_bytes(32, "big").hex()
+        else:
+            erc3009_nonce = nonce
 
-        return verify_erc3009(
-            token=token, chain_id=chain_id, authorizer=authorizer,
-            recipient=recipient, value=value, valid_after=valid_after,
-            valid_before=valid_before, nonce=nonce, v=v, r=r, s=s,
+        return await verify_erc3009(
+            token=token, chain_id=chain_id,
+            authorizer=sender, recipient=receiver,
+            value=amount, valid_after=valid_after, valid_before=deadline,
+            nonce=erc3009_nonce, v=v, r=r, s=s,
             domain_name=domain_name, domain_version=domain_version,
             owner_balance=owner_balance, on_chain_nonce=on_chain_nonce,
             current_time=current_time, w3=w3,
         )
 
-    # resolved == "permit2"
-    missing = [
-        name for name, val in [
-            ("owner", owner), ("spender", spender), ("token", token),
-            ("amount", amount), ("nonce", nonce), ("deadline", deadline),
-        ] if val is None
-    ]
-    if missing:
-        raise ValueError(f"Permit2 verification missing required fields: {missing}")
+    # resolved_scheme == "permit2"
+    # Normalise nonce → int.
+    permit2_nonce: int
+    if isinstance(nonce, str):
+        permit2_nonce = int(nonce, 16) if nonce.startswith("0x") else int(nonce)
+    else:
+        permit2_nonce = nonce
 
-    return verify_permit2(
-        owner=owner, spender=spender, token=token, amount=amount,
-        nonce=nonce, deadline=deadline, chain_id=chain_id, v=v, r=r, s=s,
+    return await verify_permit2(
+        owner=sender, spender=receiver, token=token,
+        amount=amount, nonce=permit2_nonce, deadline=deadline,
+        chain_id=chain_id, v=v, r=r, s=s,
         permit2_address=permit2_address, owner_balance=owner_balance,
         current_time=current_time, w3=w3,
     )
-
+    

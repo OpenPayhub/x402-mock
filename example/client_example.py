@@ -17,6 +17,7 @@ async def main():
             amount=0.8,
             currency="USDC"
         )
+        await ah.initialize(client_role=True)  # Initialize adapters for client role (pre-signing setup)
         return await client.get("http://localhost:8000/api/protected-data", headers={"Authorization": pk})
 
 

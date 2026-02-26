@@ -11,8 +11,6 @@ from .unions import (
 from .bases import AdapterFactory
 from .evm import (
     EVMAdapter,
-    EIP2612PermitSignature,
-    EIP2612Permit,
     EVMPaymentComponent,
     EVMVerificationResult,
     EVMTransactionConfirmation,
@@ -29,8 +27,6 @@ __all__ = [
     "get_adapter_type",
     "AdapterFactory",
     "EVMAdapter",
-    "EIP2612PermitSignature",
-    "EIP2612Permit",
     "EVMPaymentComponent",
     "EVMVerificationResult",
     "EVMTransactionConfirmation",

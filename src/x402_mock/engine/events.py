@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict
 from ..adapters.adapters_hub import AdapterHub
 from ..adapters.unions import PermitTypes, TransactionConfirmationTypes, VerificationResultTypes
 from ..schemas.https import ServerTokenResponse, ServerPaymentScheme
+from ..schemas.bases import VerificationStatus, TransactionStatus
 
 # ==================== Base Event ====================
 
@@ -91,6 +92,7 @@ class VerifySuccessEvent(BaseModel, BaseEvent):
 class VerifyFailedEvent(BaseModel, BaseEvent):
     """Result: Payment verification failed."""
     error_message: str
+    status: VerificationStatus
     
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
@@ -111,7 +113,7 @@ class SettleSuccessEvent(BaseModel, BaseEvent):
 class SettleFailedEvent(BaseModel, BaseEvent):
     """Result: Settlement failed."""
     error_message: str
-    
+    status: TransactionStatus
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
     def __repr__(self) -> str:

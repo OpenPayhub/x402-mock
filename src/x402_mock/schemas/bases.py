@@ -150,40 +150,15 @@ class BasePermit(CanonicalModel, ABC):
     Attributes:
         permit_type: Type of permit (e.g., "EIP2612", "Solana")
         signature: Signature components for permit authorization
-        deadline: Unix timestamp when permit expires
         created_at: Timestamp when permit was created
         
     Methods:
-        is_expired: Check if permit has expired
         validate_structure: Validate permit structure (blockchain-specific)
     """
     
     permit_type: str = Field(..., description="Type of permit (e.g., EIP2612, Solana)")
     signature: Optional[BaseSignature] = Field(None, description="Signature components")
-    deadline: int = Field(..., ge=0, description="Unix timestamp for permit expiration")
     created_at: datetime = Field(default_factory=datetime.now, description="Permit creation timestamp")
-
-    def is_expired(self, current_timestamp: Optional[int] = None) -> bool:
-        """
-        Check if the permit has expired.
-        
-        A permit is considered expired if the current time has passed the deadline.
-        
-        Args:
-            current_timestamp: Unix timestamp to check against (default: current time).
-                             If not provided, uses current UTC timestamp.
-        
-        Returns:
-            bool: True if permit has expired, False if still valid.
-        
-        Example:
-            permit = MyPermit(...)
-            if permit.is_expired():
-                raise PermitExpiredError("Permit has expired")
-        """
-        if current_timestamp is None:
-            current_timestamp = int(datetime.now().timestamp())
-        return current_timestamp > self.deadline
 
     def validate_structure(self) -> bool:
         """

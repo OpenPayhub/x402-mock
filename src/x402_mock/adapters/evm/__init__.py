@@ -1,7 +1,9 @@
 from .adapter import EVMAdapter
 from .schemas import (
-    EIP2612PermitSignature,
-    EIP2612Permit,
+    EVMECDSASignature,
+    EVMTokenPermit,
+    ERC3009Authorization,
+    Permit2Signature,
     EVMPaymentComponent,
     EVMVerificationResult,
     EVMTransactionConfirmation,
@@ -9,9 +11,11 @@ from .schemas import (
 
 
 __all__ = [
+    "EVMECDSASignature",
     "EVMAdapter",
-    "EIP2612PermitSignature",
-    "EIP2612Permit",
+    "EVMTokenPermit",
+    "ERC3009Authorization",
+    "Permit2Signature",
     "EVMPaymentComponent",
     "EVMVerificationResult",
     "EVMTransactionConfirmation",

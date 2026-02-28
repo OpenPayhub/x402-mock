@@ -1,4 +1,4 @@
-"""
+﻿"""
 EVM Adapter Schema Models
 
 Pydantic models for EVM permit and settlement operations.  All classes
@@ -201,7 +201,7 @@ class EVMPaymentComponent(BasePaymentComponent):
     EVM-Specific Payment Component.
     
     Extends BasePaymentComponent with EVM-specific payment requirements including
-    token contract address and chain ID.
+    token contract address, chain identifier (CAIP-2), and an optional recipient address.
     Typically used for USDC payments on EVM networks (Ethereum, Sepolia, etc.).
     
     Attributes:
@@ -211,7 +211,12 @@ class EVMPaymentComponent(BasePaymentComponent):
         metadata: Additional payment metadata (may include gas limits, fees, etc.)
         created_at: Timestamp when payment component was created
         token: Token contract address on specific EVM chain (EVM-specific)
-        chain_id: EVM network ID (1=Ethereum, 11155111=Sepolia, etc.) (EVM-specific)
+        caip2: CAIP-2 chain identifier (e.g., "eip155:1", "eip155:11155111") (EVM-specific)
+        pay_to: Optional recipient address to pay to (EVM-specific)
+        rpc_url: Optional EVM RPC URL for this payment (EVM-specific)
+        token_name: Optional token name (e.g., "USDC") (EVM-specific)
+        token_decimals: Optional token decimals (string or int) (EVM-specific)
+        token_version: Optional token version (string or int) (EVM-specific)
     
     Example:
         payment = EVMPaymentComponent(
@@ -219,14 +224,19 @@ class EVMPaymentComponent(BasePaymentComponent):
             amount=1.0,  # 1 USDC
             currency="USD",
             token="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-            chain_id=11155111,
+            caip2="eip155:11155111",
             metadata={"gas_price": "20", "priority_fee": "2"}
         )
     """
     
     payment_type: Literal["evm"] = Field(default="evm", description="Payment type identifier")
     token: str = Field(..., description="Token contract address on EVM chain")
-    chain_id: int = Field(..., ge=1, description="EVM network ID")
+    caip2: str = Field(..., description='CAIP-2 chain identifier (e.g., "eip155:1")')
+    pay_to: str | None = Field(default=None, description="Optional recipient address to pay to")
+    rpc_url: str | None = Field(default=None, description="Optional RPC URL for chain access")
+    token_name: str | None = Field(default=None, description="Optional token name (e.g., 'USDC')")
+    token_decimals: str | int | None = Field(default=None, description="Optional token decimals (string or int)")
+    token_version: str | int | None = Field(default=None, description="Optional token version (string or int)")
 
     def validate_payment(self) -> bool:
         """
@@ -236,7 +246,8 @@ class EVMPaymentComponent(BasePaymentComponent):
         - payment_type is "evm" 
         - amount is non-negative
         - token is valid EVM address format (0x...)
-        - chain_id is valid EVM network
+        - caip2 is a valid CAIP-2 identifier for EVM chains (eip155:<chain_id>)
+        - pay_to is either None or a valid EVM address format (0x...)
         
         Returns:
             bool: True if payment specification is valid
@@ -250,14 +261,18 @@ class EVMPaymentComponent(BasePaymentComponent):
         
         if len(self.token) != 42:
             raise ValueError("Token address must be 42 characters long")
+
+        # Validate optional recipient address format
+        if self.pay_to is not None:
+            if not self.pay_to.startswith("0x"):
+                raise ValueError("pay_to must be a valid EVM address starting with 0x")
+            if len(self.pay_to) != 42:
+                raise ValueError("pay_to address must be 42 characters long")
         
         # Validate payment type
         if self.payment_type.lower() != "evm":
             raise ValueError(f"Unsupported payment type: {self.payment_type}")
         
-        # Validate chain_id
-        if self.chain_id < 1:
-            raise ValueError("chain_id must be positive")
         
         return True
 

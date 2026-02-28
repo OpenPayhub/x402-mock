@@ -1,4 +1,4 @@
-"""
+﻿"""
 EVM Chain Configuration Management
 
 Provides unified access to EVM chain configurations and assets.
@@ -7,31 +7,54 @@ and chain state initialization based on permit data.
 """
 
 import os
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, List, Any, Union
 from decimal import Decimal, InvalidOperation
 from pydantic import BaseModel, Field
 
+from web3 import Web3
 import dotenv
+import httpx
 
 dotenv.load_dotenv()
 
-class AssetConfig(BaseModel):
+class EvmAssetConfig(BaseModel):
     """Token asset configuration."""
+    symbol: str
     address: str = Field(..., description="Token contract address")
     name: str = Field(..., description="Token name")
     decimals: int = Field(..., description="Token decimals")
     version: str = Field(..., description="EIP712 permit version")
 
 
-class ChainConfig(BaseModel):
-    """EVM blockchain network configuration."""
-    network: str = Field(..., description="Network identifier (e.g., ethereum-mainnet)")
+class EvmChainInfo(BaseModel):
+    """Subset of ethereum-lists chain metadata we rely on.
+
+    This model is designed to be compatible with the JSON files in:
+    `ethereum-lists/chains` (eip155-<chain_id>.json).
+
+    Note:
+        The upstream payload contains many more fields; we keep only the ones
+        needed by the dynamic chain config builder below.
+    """
     name: str = Field(..., description="Human-readable network name")
+    rpc: List[str] = Field(..., description="List of RPC endpoints")
+    infoURL: str = Field(..., description="URL with more information about the chain")
+    chainId: int = Field(..., description="Chain ID of the network")
+    explorers: Optional[List[Dict[str, str]]] = Field(
+        default=None,
+        description="Optional list of explorer descriptors from the upstream payload",
+    )
+    
+
+class EvmChainConfig(BaseModel):
+    """EVM blockchain network configuration."""
+    caip2: str
+    chain_id: int
     type: str = Field(default="evm", description="Blockchain type (evm/svm)")
-    rpc_url: str = Field(..., description="JSON-RPC endpoint URL template")
+    rpc_url: Optional[str] = Field(..., description="JSON-RPC endpoint URL template")
     public_rpc_url: str = Field(..., description="Public RPC endpoint (fallback when no infra key)")
     explorer_url: str = Field(..., description="Block explorer URL")
-    assets: Dict[str, AssetConfig] = Field(default_factory=dict, description="Supported assets")
+    assets: Dict[str, EvmAssetConfig] = Field(default_factory=dict, description="Supported assets")
 
 # ---------------------------------------------------------------------------
 # ERC-1271 constants
@@ -121,7 +144,7 @@ _EVM_CHAINS_DATA: Dict = {
       "assets": {
         "USDC": {
           "address": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-          "name": "USDC",
+          "name": "USD Coin",
           "decimals": 6,
           "version": "2"
         },
@@ -136,165 +159,321 @@ _EVM_CHAINS_DATA: Dict = {
 }
 
 
-def get_rpc_url(chain_id: int, infra_key: Optional[str] = None) -> Optional[str]:
-    """
-    Construct RPC URL for given chain with environment-aware infrastructure key handling.
-    
-    This function determines the RPC URL in the following priority:
-    1. If infra_key is provided (non-empty), use it with the chain's RPC template from _EVM_CHAINS_DATA
-    2. Otherwise, use the public_rpc_url fallback configured in _EVM_CHAINS_DATA
-    3. Return None if chain is unsupported
-    
-    The function supports CAIP-2 format chain IDs by converting them (e.g., "eip155:1" → 1).
-    All RPC configurations are centralized in _EVM_CHAINS_DATA for easier maintenance.
-    
-    Args:
-        chain_id: Chain ID as integer (e.g., 1 for Ethereum) or CAIP-2 format string (e.g., "eip155:1")
-        infra_key: Optional infrastructure API key from environment (e.g., Alchemy/Infura key).
-                   If None or empty, uses public_rpc_url from configuration.
-    
-    Returns:
-        str: Complete RPC URL ready for use, or None if chain is unsupported
-    
-    Example:
-        # Using infrastructure key (premium RPC)
-        rpc = get_rpc_url(1, infra_key="xyz123")  
-        # Returns: "https://eth-mainnet.g.alchemy.com/v2/xyz123"
-        
-        # Falling back to public RPC
-        rpc = get_rpc_url(11155111)  
-        # Returns: "https://rpc.sepolia.org"
-    """
-    # Normalize chain_id: convert CAIP-2 format to integer if needed
-    if isinstance(chain_id, str):
-        if ":" in chain_id:
-            chain_id = int(chain_id.split(":")[1])
-        else:
-            chain_id = int(chain_id)
-    
-    # Find the CAIP-2 format key for this chain_id
-    caip2_key = None
-    for key in _EVM_CHAINS_DATA.keys():
-        if int(key.split(":")[1]) == chain_id:
-            caip2_key = key
-            break
-    
-    if not caip2_key:
-        return None
-    
-    config_data = _EVM_CHAINS_DATA[caip2_key]
-    
-    # If infra_key is provided and non-empty, use premium RPC template with the key
-    if infra_key and infra_key.strip():
-        return config_data["rpc_url"].replace("{RPC_KEYS}", infra_key)
-    
-    # Otherwise, fall back to public RPC URL from configuration
-    return config_data.get("public_rpc_url")
 
-
-def get_chain_config(chain_id: str) -> Optional[ChainConfig]:
+def parse_token_address_and_decimals(
+    token_list: List[Dict[str, Any]], 
+    chain_id: int, 
+    symbol: str
+) -> Tuple[str, int]:
     """
-    Get chain configuration by chain ID.
-    
-    Args:
-        chain_id: Chain identifier in CAIP-2 format (e.g., "eip155:1", "eip155:11155111")
-    
-    Returns:
-        ChainConfig: Pydantic model with chain configuration, or None if not found
-    
-    Example:
-        config = get_chain_config("eip155:1")
-        print(config.name)  # "Ethereum Mainnet"
-        print(config.assets["USDC"].address)  # USDC address
-    """
-    if chain_id not in _EVM_CHAINS_DATA:
-        return None
-    
-    data = _EVM_CHAINS_DATA[chain_id]
-    
-    # Convert asset dicts to AssetConfig objects
-    assets = {
-        symbol: AssetConfig(**asset_data)
-        for symbol, asset_data in data.get("assets", {}).items()
-    }
-    
-    return ChainConfig(
-        network=data["network"],
-        name=data["name"],
-        type=data["type"],
-        rpc_url=data["rpc_url"],
-        public_rpc_url=data["public_rpc_url"],
-        explorer_url=data["explorer_url"],
-        assets=assets
-    )
-
-
-def get_all_chain_configs() -> Dict[str, ChainConfig]:
-    """
-    Get all supported chain configurations.
-    
-    Returns:
-        Dict mapping chain IDs to ChainConfig objects
-    """
-    configs = {}
-    for chain_id in _EVM_CHAINS_DATA.keys():
-        config = get_chain_config(chain_id)
-        if config:
-            configs[chain_id] = config
-    return configs
-
-
-def is_chain_supported(chain_id: str) -> bool:
-    """
-    Check if chain is supported.
-    
-    Args:
-        chain_id: Chain identifier (e.g., "eip155:1")
-    
-    Returns:
-        True if chain is supported, False otherwise
-    """
-    return chain_id in _EVM_CHAINS_DATA
-
-
-def resolve_asset_by_currency(config: ChainConfig, currency: str) -> Tuple[str, AssetConfig]:
-    """
-    Resolve a configured chain asset by currency input.
-
-    The input can be either an asset symbol (e.g. "USDC") or token name
-    (e.g. "USD Coin"), matched case-insensitively.
+    Locates a token's contract address and decimals within a metadata list.
 
     Args:
-        config: Chain configuration containing supported assets.
-        currency: Requested asset identifier.
+        token_list (List[Dict[str, Any]]): A list of dictionaries containing token metadata.
+        chain_id (int): The EIP-155 chain identifier to filter by.
+        symbol (str): The token ticker symbol (e.g., 'WETH', 'USDC').
 
     Returns:
-        Tuple of (asset_symbol, asset_config).
+        Tuple[str, int]: A tuple containing the (address, decimals).
 
     Raises:
-        ValueError: If currency is empty.
-        KeyError: If the asset is not supported on the chain.
+        ValueError: If the token is not found on the specified chain, or if the 
+                    found token contains invalid/missing address or decimals data.
     """
-    normalized_currency = currency.strip().upper()
-    if not normalized_currency:
-        raise ValueError("Currency must be a non-empty string")
+    search_symbol = symbol.strip().upper()
 
-    # Match by symbol first for deterministic behavior
-    if normalized_currency in config.assets:
-        return normalized_currency, config.assets[normalized_currency]
+    for token in token_list:
+        # Match both chainId and symbol (case-insensitive)
+        if (
+            token.get("chainId") == chain_id and 
+            str(token.get("symbol", "")).upper() == search_symbol
+        ):
+            address = token.get("address")
+            decimals = token.get("decimals")
 
-    # Fallback to token name match to keep caller-side usage flexible
-    for symbol, asset in config.assets.items():
-        if asset.name.strip().upper() == normalized_currency:
-            return symbol, asset
+            # Strict validation to ensure the returned data is usable
+            if not isinstance(address, str) or not isinstance(decimals, int):
+                raise ValueError(
+                    f"Invalid metadata for '{symbol}' on chain {chain_id}. "
+                    f"Expected (str, int), got (address: {type(address).__name__}, "
+                    f"decimals: {type(decimals).__name__})"
+                )
 
-    supported_assets = ", ".join(config.assets.keys())
-    raise KeyError(
-        f"Unsupported currency '{currency}' for chain {config.network}. "
-        f"Supported assets: {supported_assets}"
+            return address, decimals
+
+    raise ValueError(
+        f"Token with symbol '{symbol}' was not found in the provided list for chain ID {chain_id}."
     )
 
 
+def fetch_evm_token_list() -> List[Dict[str, Any]]:
+    """
+    Fetches the official Uniswap token list and extracts token metadata.
+
+    Returns:
+        List[Dict[str, Any]]: A list of token metadata objects.
+
+    Raises:
+        ValueError: If the response is empty or the 'tokens' key is missing.
+        httpx.HTTPError: If the network request fails.
+    """
+    uniswap_url = "https://tokens.uniswap.org"
+    data = fetch_json(uniswap_url)
+    
+    tokens = data.get("tokens")
+    if not tokens:
+        raise ValueError(
+            f"Failed to extract tokens: 'tokens' key missing or empty at {uniswap_url}"
+        )
+    
+    return tokens
+
+
+def fetch_evm_chain_info(caip2: str) -> EvmChainInfo:
+    """
+    Retrieves EVM chain configuration from the ethereum-lists repository.
+
+    Args:
+        caip2 (str): The CAIP-2 compliant chain identifier (e.g., 'eip155:1').
+
+    Returns:
+        EvmChainInfo: A validated data object containing chain specifications.
+
+    Raises:
+        httpx.HTTPError: If the chain configuration file is not found or unreachable.
+        TypeError: If the returned payload does not match the EvmChainInfo schema.
+    """
+    chain_id = _parse_caip2_eip155_chain_id(caip2)
+    url = (
+        "https://raw.githubusercontent.com/ethereum-lists/chains/master/_data/chains/"
+        f"eip155-{chain_id}.json"
+    )
+    
+    payload = fetch_json(url)
+    
+    try:
+        return EvmChainInfo(**payload)
+    except Exception as e:
+        raise TypeError(
+            f"Schema mismatch: Data from {url} is incompatible with EvmChainInfo."
+        ) from e
+
+
+def fetch_json(url: str, timeout: float = 10.0) -> Dict[str, Any]:
+    """
+    Fetches JSON data from a URL and raises detailed exceptions on failure.
+
+    Args:
+        url (str): The target URL to request.
+        timeout (float): Connection timeout in seconds.
+
+    Returns:
+        Dict[str, Any]: The parsed JSON response.
+
+    Raises:
+        httpx.HTTPStatusError: If the server returns a 4xx or 5xx status code.
+        httpx.RequestError: If a network-level error occurs (DNS, Connection Refused).
+        RuntimeError: If the response is not valid JSON.
+    """
+    with httpx.Client(timeout=timeout) as client:
+        try:
+            response = client.get(url)
+            
+            # Checks for 4xx/5xx errors
+            response.raise_for_status()
+            
+            try:
+                return response.json()
+            except Exception as json_exc:
+                raise RuntimeError(
+                    f"Failed to decode JSON from {url}. Content-Type: {response.headers.get('Content-Type')}"
+                ) from json_exc
+
+        except httpx.HTTPStatusError as exc:
+            # Custom message including status code and method
+            raise httpx.HTTPStatusError(
+                f"HTTP {exc.response.status_code} error occurred while requesting {url}. "
+                f"Response body: {exc.response.text[:100]}",
+                request=exc.request,
+                response=exc.response
+            ) from exc
+
+        except httpx.RequestError as exc:
+            # Detailed network error info
+            raise httpx.RequestError(
+                f"Network error: Failed to reach {url}. Details: {str(exc)}",
+                request=exc.request
+            ) from exc
+
+
+def _parse_caip2_eip155_chain_id(caip2: str) -> int:
+    """
+    Parses a CAIP-2 identifier (e.g., 'eip155:1' or 'eip155-1') into an integer chain ID.
+
+    Args:
+        caip2 (str): The CAIP-2 string to parse.
+
+    Returns:
+        int: The extracted EIP-155 chain ID.
+
+    Raises:
+        ValueError: If the input format is invalid, the prefix is missing, 
+                    or the chain ID is not a positive integer.
+    """
+    if not isinstance(caip2, str) or not caip2.strip():
+        raise ValueError(f"Invalid input type: Expected non-empty string, got {type(caip2).__name__}")
+
+    # Standardize the input by replacing hyphen with colon for uniform splitting
+    normalized = caip2.strip().replace("-", ":")
+    parts = normalized.split(":")
+
+    # Validate structure: must have exactly one separator and the correct prefix
+    if len(parts) != 2 or parts[0] != "eip155":
+        raise ValueError(
+            f"Invalid CAIP-2 format: '{caip2}'. "
+            f"Expected format 'eip155:<chain_id>' or 'eip155-<chain_id>'"
+        )
+
+    try:
+        chain_id = int(parts[1])
+    except (ValueError, TypeError) as exc:
+        raise ValueError(
+            f"Failed to parse chain ID from '{caip2}'. "
+            f"The segment '{parts[1]}' is not a valid integer."
+        ) from exc
+
+    if chain_id <= 0:
+        raise ValueError(
+            f"Invalid chain ID in '{caip2}': {chain_id}. "
+            f"Chain ID must be a positive integer."
+        )
+
+    return chain_id
+
+
+def parse_public_rpc_url(rpcs: List[str], start_with: str = "https://") -> Optional[str]:
+    """Pick a public (no-key) RPC URL from a chain's RPC list.
+
+    This function prefers plain HTTPS endpoints that do not contain common
+    placeholder markers (`$` or `{...}`), which typically indicate an API key is required.
+
+    Args:
+        rpcs: RPC URL list from the chain metadata payload.
+        start_with: Scheme/prefix filter (defaults to HTTPS).
+
+    Returns:
+        A public RPC URL, or None if none is found.
+    """
+    if not rpcs or not isinstance(rpcs, list):
+        raise ValueError(
+            "No RPC URLs provided in chain configuration; rpcs must be a list of strings, "
+            f"but {type(rpcs).__name__} was provided"
+        )
+
+    for rpc in rpcs:
+        if not isinstance(rpc, str):
+            continue
+        if not rpc.startswith(start_with):
+            continue
+        if "$" in rpc or "{" in rpc or "}" in rpc:
+            continue
+        return rpc
+
+
+def fetch_erc20_name_and_version(*, rpc_url: str, token_address: str) -> Tuple[Optional[str], str]:
+    """Fetch token `name()` and optional EIP-712 `version()` from the chain RPC.
+
+    Notes:
+        - `version()` is not part of ERC-20 and may not exist (defaults to "0").
+        - If `name()` cannot be resolved, returns None for name.
+    """
+    if not isinstance(rpc_url, str) or not rpc_url.strip():
+        raise ValueError("rpc_url must be a non-empty string")
+    if not isinstance(token_address, str) or not token_address.strip():
+        raise ValueError("token_address must be a non-empty string")
+
+    w3 = Web3(Web3.HTTPProvider(rpc_url.strip(), request_kwargs={"timeout": 10}))
+    checksum = w3.to_checksum_address(token_address.strip())
+
+    abi = [
+        {
+            "name": "name",
+            "type": "function",
+            "stateMutability": "view",
+            "inputs": [],
+            "outputs": [{"name": "", "type": "string"}],
+        },
+        {
+            "name": "version",
+            "type": "function",
+            "stateMutability": "view",
+            "inputs": [],
+            "outputs": [{"name": "", "type": "string"}],
+        },
+    ]
+    contract = w3.eth.contract(address=checksum, abi=abi)
+
+    name: Optional[str] = None
+    version: str = "0"
+
+    try:
+        val = contract.functions.name().call()
+        if isinstance(val, str) and val.strip():
+            name = val.strip()
+    except Exception:
+        name = None
+
+    try:
+        val = contract.functions.version().call()
+        if isinstance(val, str) and val.strip():
+            version = val.strip()
+    except Exception:
+        version = "0"
+
+    return name, version
+
+
+def parse_private_url(
+    urls: List[str], 
+    start_with: Union[str, Tuple[str, ...]] = "https:"
+) -> List[str]:
+    """
+    Filters a list of URLs based on a protocol prefix and the presence of API key placeholders.
+
+    This function identifies infrastructure URLs that contain environment variable 
+    placeholders (e.g., '${INFURA_API_KEY}') and match the specified starting prefix.
+
+    Args:
+        urls (List[str]): A list of RPC or WebSocket URL strings.
+        start_with (Union[str, Tuple[str, ...]]): The protocol prefix to filter by. 
+            Defaults to "https:". Can be a string or a tuple of strings.
+
+    Returns:
+        List[str]: A list of URLs matching the prefix and containing a '${' placeholder.
+                   Returns an empty list if no matches are found.
+
+    Raises:
+        TypeError: If 'urls' is not a list or 'start_with' is not a string/tuple.
+    """
+    if not isinstance(urls, list):
+        raise TypeError(f"Expected 'urls' to be a list, got {type(urls).__name__}")
+    
+    if not isinstance(start_with, (str, tuple)):
+        raise TypeError(f"Expected 'start_with' to be str or tuple, got {type(start_with).__name__}")
+
+    filtered_urls = []
+    
+    for url in urls:
+        if not isinstance(url, str):
+            continue
+            
+        # Check if the URL starts with the target protocol and contains the placeholder syntax
+        if url.startswith(start_with) and "${" in url and "}" in url:
+            filtered_urls.append(url)
+            
+    return filtered_urls
+
+ 
 def get_private_key_from_env() -> Optional[str]:
     """
     Load EVM server private key from environment variables.
@@ -323,7 +502,7 @@ def get_private_key_from_env() -> Optional[str]:
     return os.getenv("EVM_PRIVATE_KEY")
 
 
-def get_infra_key_from_env() -> Optional[str]:
+def get_rpc_key_from_env() -> Optional[str]:
     """
     Load EVM infrastructure API key from environment variables.
     
@@ -349,7 +528,7 @@ def get_infra_key_from_env() -> Optional[str]:
         # Will be used to construct premium RPC URLs like:
         # "https://eth-mainnet.g.alchemy.com/v2/xyz123abc456..."
     """
-    return os.getenv("EVM_INFURA_KEY")
+    return os.getenv("EVM_PRC_KEY")
 
 
 def amount_to_value(*, amount: float | int | str | Decimal, decimals: int) -> int:
@@ -423,5 +602,6 @@ def value_to_amount(*, value: int | str | Decimal, decimals: int) -> float:
 
     scale = Decimal(10) ** decimals
     return float(dec_value / scale)
+
 
 

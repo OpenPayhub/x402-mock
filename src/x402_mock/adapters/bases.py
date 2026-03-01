@@ -313,7 +313,7 @@ class AdapterRegistry(ABC):
         registry.payment_method_register()
         # Payment methods are now registered and available through AdapterHub
     """
-    payment_component: List[BasePaymentComponent] = []
+    payment_components: List[BasePaymentComponent] = []
     
     @abstractmethod
     def payment_method_register(self) -> None:

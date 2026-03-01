@@ -41,17 +41,19 @@ class AdapterHub:
     Manages payment component registration and delegates to blockchain-specific adapters.
     """
     
-    def __init__(self, evm_private_key: str = None, rpc_url: Optional[str] = None, request_timeout: int = 60):
+    def __init__(self, evm_private_key: str = None, request_timeout: int = 60):
         """
-        Initialize AdapterHub with registry and adapter mappings.
-        
-        Sets up payment registry and registers EVM adapter with BlockchainDetector.
+        Initialize the hub with a payment registry and chain-specific adapter instances.
+
+        Args:
+            evm_private_key: Private key used by the EVM adapter for on-chain operations.
+            request_timeout: HTTP request timeout (seconds) forwarded to each adapter.
         """
         self._registry = PaymentRegistry()
 
         # Mapping of blockchain types to adapter classes
         self._adapter_factories: dict[str, AdapterFactory] = {
-            "evm": EVMAdapter(private_key=evm_private_key, rpc_url=rpc_url, request_timeout=request_timeout),
+            "evm": EVMAdapter(private_key=evm_private_key, request_timeout=request_timeout),
             # "svm": SolanaAdapter(),
             # Placeholder for future blockchain types # TODO add more blockchain types
         }
@@ -66,31 +68,46 @@ class AdapterHub:
     
     def register_payment_methods(
         self,
-        chain_id: str,
-        amount: float,
-        currency: str,
+        payment_component: Union[PaymentComponentTypes, Dict[str, Any]],
+        client_role: bool = False,
     ) -> None:
         """
-        Register payment methods for a specific chain.
-        
-        Automatically detects blockchain type from chain_id and obtains wallet address.
-        
+        Register a payment component into the hub under the given role.
+
+        **Server role** (``client_role=False``, default): if ``pay_to`` is not set on
+        the component, it is automatically filled with the wallet address returned by
+        the matching chain adapter.  Use this when the hub acts as the receiving party.
+
+        **Client role** (``client_role=True``): ``pay_to`` is left untouched.  Use this
+        when the hub acts as the signing/paying party and the recipient address will
+        come from the remote server's payment requirements.
+
         Args:
-            chain_id: Chain ID in CAIP-2 format (e.g., "eip155:1" for EVM)
-            amount: Payment amount
-            currency: Currency code (e.g., "USD")
+            payment_component: A ``PaymentComponentTypes`` instance or a plain dict
+                               that will be coerced into the correct type.
+            client_role: ``False`` (default) for server role; ``True`` for client role.
+
+        Raises:
+            TypeError: If the blockchain type cannot be determined from the component,
+                       or if no adapter is registered for that type.
+            ValueError: If the component cannot be parsed or fails chain validation.
         """
-        # Detect blockchain type from chain_id format
-        if chain_id.startswith("eip155:"):
-            blockchain_type = "evm"
-        else:
-            raise ValueError(f"Unknown blockchain type for chain_id: {chain_id}")
-        
-        # Get wallet address from appropriate server adapter
-        adapter: AdapterFactory = self._adapter_factories[blockchain_type]
-        wallet_address = adapter.get_wallet_address()
-        
-        self._registry.method_register(chain_id, amount, currency, wallet_address)
+        # Coerce dict to a typed payment component early so we can inspect its fields.
+        if isinstance(payment_component, dict):
+            payment_component = TypeAdapter(PaymentComponentTypes).validate_python(payment_component)
+
+        if not client_role:
+            # Server role: detect the chain type and resolve the receiving wallet address.
+            blockchain_type = get_adapter_type(payment_component)
+            if not blockchain_type:
+                raise TypeError("Unknown blockchain type for payment component")
+            adapter: AdapterFactory = self._adapter_factories.get(blockchain_type)
+            if not adapter:
+                raise TypeError(f"No adapter registered for blockchain type: {blockchain_type}")
+            if not payment_component.pay_to:
+                payment_component.pay_to = adapter.get_wallet_address()
+
+        self._registry.method_register(payment_component)
     
     def get_payment_methods(self) -> List[PaymentComponentTypes]:
         """
@@ -223,20 +240,18 @@ class AdapterHub:
 
         Args:
             list_components: Remote payment components (typed or dict) to match
+                             against locally registered ones.
 
         Returns:
-            Signed permit from adapter
+            Signed permit produced by the matching chain adapter.
 
         Raises:
-            RuntimeError: If initialize() has not been called (client-side guard).
-            ValueError: If no matching component found or conversion fails
-            TypeError: If blockchain type cannot be determined
+            ValueError: If no matching component is found or type conversion fails.
+            TypeError: If the blockchain type cannot be determined.
         """
         if not self._client_initialized:
-            raise RuntimeError(
-                "AdapterHub is not initialised. "
-                "Call 'await hub.initialize()' once at startup before signing."
-            )
+            # Auto-initialize in client role if not done explicitly beforehand.
+            await self.initialize(client_role=True)
         # Match remote component with local support list
         local_components = self.get_payment_methods()
         matched_component = match_payment_component(list_components, local_components)

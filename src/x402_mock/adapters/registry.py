@@ -1,134 +1,64 @@
-"""
+﻿"""
 Blockchain Adapter Registry
 
-Manages registration and creation of payment components for different blockchains.
+Manages registration and routing of payment components across different blockchain types.
 """
 
-from typing import List
+from typing import List, Union, Dict, Any
+
+from pydantic import TypeAdapter
 
 from .evm.schemas import EVMPaymentComponent
-from .evm.constants import get_chain_config, ChainConfig, resolve_asset_by_currency
+from .evm.registors import EVMRegistry
 from .unions import PaymentComponentTypes
 
 
 class PaymentRegistry:
     """
-    Registry for creating blockchain-specific payment components.
-    
-    Maps blockchain types to their payment component factories and manages
-    creation of payment components for different chains.
+    Central registry that aggregates payment components across all supported blockchain types.
+
+    Routes each submitted payment component to the appropriate chain-specific registry
+    (e.g. EVM, and future chains such as Solana) and maintains a unified support list.
     """
-    
-    # Component factory functions by blockchain type # TODO add more methods
-    _component_factories = {
-        "evm": "EVMPaymentComponent",
-    }
-    def __init__(self):
-        self._support_list = []
+
+    def __init__(self) -> None:
+        # Per-chain registry instances; extend this dict when new chain types are introduced.
+        self._registries: Dict[str, Any] = {
+            "evm": EVMRegistry(),
+        }
+        self._support_list: List[PaymentComponentTypes] = []
 
     def method_register(
         self,
-        chain_id: str,
-        amount: float,
-        currency: str,
-        wallet_address: str
+        payment_component: Union[PaymentComponentTypes, Dict[str, Any]],
     ) -> None:
         """
-        Create payment components for a specific chain.
-        
-        Args:
-            chain_id: Chain identifier in CAIP-2 format (e.g., "eip155:1", "eip155:11155111")
-            amount: Payment amount in smallest units (e.g., 1.0 USDC)
-            currency: Currency code (e.g., "USD", "EUR")
-            wallet_address: Wallet address for permit signing
-        
-        Returns:
-            List of initialized payment components, or None if chain not supported
-        
-        Raises:
-            ValueError: If input parameters are invalid
-        
-        Example:
-            components = BlockchainPaymentRegistry.create_payment_components(
-                chain_id="eip155:1",
-                amount=1.0,
-                currency="USD"
-            )
-            # Returns: [EVMPaymentComponent(...), ...]
-        """
-        if not isinstance(amount, float) or amount < 0:
-            raise ValueError("Amount must be a non-negative float")
-        
-        if not isinstance(currency, str) or not currency.strip():
-            raise ValueError("Currency must be a non-empty string")
-        
-        # Get chain configuration
-        config = get_chain_config(chain_id)
-        if not config:
-            raise KeyError(f"Unsupport chain_id for {chain_id}, please check and change for CAIP-2 format eg: 'eip155:1'")
-        
-        # Create components based on blockchain type
-        if config.type == "evm":
-            self._support_list.extend(self._create_evm_components(chain_id, config, amount, currency, wallet_address))
+        Register a payment component into the appropriate chain-specific registry.
 
-        # Placeholder for future blockchain types (Solana, etc.)
-        
+        Accepts either a validated payment component instance or a raw dict that will
+        be coerced into the correct type via Pydantic's discriminated union.
+
+        Args:
+            payment_component: A ``PaymentComponentTypes`` instance or a plain dict
+                               with the necessary fields to construct one.
+
+        Raises:
+            ValueError: If the dict cannot be parsed into a known payment component type,
+                        or if the component fails chain-specific validation.
+        """
+        if isinstance(payment_component, dict):
+            payment_component = TypeAdapter(PaymentComponentTypes).validate_python(payment_component)
+
+        if isinstance(payment_component, EVMPaymentComponent):
+            self._registries["evm"].payment_method_register(payment_component=payment_component)
+            self._support_list.append(payment_component)
+        # Placeholder for future blockchain types (e.g. Solana).
 
     def get_support_list(self) -> List[PaymentComponentTypes]:
         """
-        Get all registered payment components.
-        
+        Return all registered payment components across all supported chain types.
+
         Returns:
-            List of all registered payment components
-        
-        Example:
-            registry = PaymentRegistry()
-            registry.method_register("eip155:1", 1.0, "USD")
-            components = registry.get_support_list()
-            # Returns: [EVMPaymentComponent(...), ...]
+            An ordered list of every payment component that has been successfully registered.
         """
         return self._support_list
-
-    @classmethod
-    def _create_evm_components(
-        cls,
-        chain_id: str,
-        config: ChainConfig,
-        amount: float,
-        currency: str,
-        wallet_address: str
-    ) -> List[PaymentComponentTypes]:
-        """
-        Create EVM payment components for supported assets.
-        
-        Args:
-            chain_id: Chain identifier in CAIP-2 format
-            config: Chain configuration object
-            amount: Payment amount
-            currency: Currency code (e.g., "USD", "EUR")
-            wallet_address: Wallet address for permit signing
-        
-        Returns:
-            List of EVMPaymentComponent objects
-        """
-        # Extract numeric chain ID from CAIP-2 format (e.g., "eip155:1" -> 1)
-        numeric_chain_id = int(chain_id.split(":")[-1])
-        symbol, asset = resolve_asset_by_currency(config, currency)
-
-        component = EVMPaymentComponent(
-            payment_type='evm',
-            amount=amount,
-            token=asset.address,
-            currency=symbol,
-            chain_id=numeric_chain_id,
-            metadata={
-                "symbol": symbol,
-                "name": asset.name,
-                "decimals": asset.decimals,
-                "network": config.network,
-                "version": asset.version,
-                "wallet_address": wallet_address
-            }
-        )
-
-        return [component]

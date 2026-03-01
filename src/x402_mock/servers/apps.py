@@ -5,7 +5,7 @@ Provides a simple interface for building X402 payment servers with typed events.
 """
 
 import asyncio
-from typing import Optional, Callable
+from typing import Optional, Callable, Union, Dict, Any
 from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 
@@ -21,7 +21,7 @@ from ..engine.events import (
     Http402PaymentEvent,
 )
 from ..engine.executors import EventChain
-from ..adapters.adapters_hub import AdapterHub
+from ..adapters.adapters_hub import AdapterHub, PaymentComponentTypes
 from ..schemas.https import ClientTokenRequest
 from .flows import setup_event_bus
 
@@ -65,15 +65,14 @@ class Http402Server(FastAPI):
         # Setup token endpoint
         self._setup_token_endpoint(token_endpoint)
     
-    def add_payment_method(self, chain_id: str, amount: float, currency: str) -> None:
+    def add_payment_method(self, payment_component: Union[PaymentComponentTypes, Dict[str, Any]]) -> None:
         """Register a payment method.
         
         Args:
-            chain_id: Chain identifier (e.g., "eip155:1")
-            amount: Payment amount
-            currency: Currency code (e.g., "USDC")
+            payment_component: A ``PaymentComponentTypes`` instance or a plain dict
+                               that will be coerced into the correct type.
         """
-        self.adapter_hub.register_payment_methods(chain_id=chain_id, amount=amount, currency=currency)
+        self.adapter_hub.register_payment_methods(payment_component=payment_component, client_role=False)
     
     def subscribe(self, event_class: type[BaseEvent], handler: Callable) -> None:
         """Register event handler.

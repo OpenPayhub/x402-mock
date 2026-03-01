@@ -53,8 +53,9 @@ from .signatures import sign_universal, approve_erc20, is_erc3009_currency
 from .verifies import verify_universal, query_erc20_allowance
 from ..bases import AdapterFactory
 from .ERC20_ABI import get_balance_abi, get_erc3009_abi, get_permit2_abi
-from .constants import get_rpc_url, get_private_key_from_env, get_infra_key_from_env, amount_to_value, value_to_amount, get_chain_config
+from .constants import get_private_key_from_env, amount_to_value, value_to_amount, parse_caip2_eip155_chain_id
 from ...schemas.bases import BasePaymentComponent
+from .registors import EVMRegistry
 
 # ---------------------------------------------------------------------------
 # Module-level Permit2 constants
@@ -116,31 +117,30 @@ class EVMAdapter(AdapterFactory):
             confirmation = await adapter.settle(permit)
     """
 
-    def __init__(self, private_key: Optional[str] = None, rpc_url: Optional[str] = None, request_timeout: int = 60):
+    def __init__(self, *, private_key: Optional[str] = None, request_timeout: int = 60):
         """
         Initialize EVM Server Adapter with environment-aware configuration.
-        
+
         This constructor implements a flexible initialization pattern:
-        1. Accepts optional private_key parameter (useful for testing)
-        2. Falls back to evm_private_key environment variable if not provided
-        3. Initializes server account from the resolved private key
-        4. Loads optional infrastructure key from evm_infra_key environment variable
-        
-        Token address and RPC URL are NOT stored at initialization time. Instead, they are
-        derived dynamically from the permit object during verify_signature() and settle() calls.
-        This allows the adapter to handle multiple tokens and networks seamlessly.
-        
+        1. Accepts optional ``private_key`` parameter (useful for testing).
+        2. Falls back to the ``evm_private_key`` environment variable if not provided.
+        3. Initializes the server account object from the resolved private key.
+
+        Token address and RPC URL are **not** stored at initialization time.  They are
+        supplied call-by-call via the ``rpc_url`` field of :class:`EVMPaymentComponent`
+        (or the permit object) during :meth:`verify_signature` and :meth:`settle`.  This
+        design lets a single adapter instance handle arbitrary EVM networks without
+        reconfiguration.
+
         Args:
-            private_key: Optional server's private key (0x-prefixed hex format) for explicit override.
-                        If None, loads from evm_private_key environment variable.
-        
+            private_key: Server's private key in 0x-prefixed hex format.  When omitted,
+                the value of the ``evm_private_key`` environment variable is used.
+            request_timeout: HTTP request timeout in seconds passed to every
+                :class:`AsyncWeb3` provider created by this instance (default ``60``).
+
         Raises:
-            ValueError: If neither private_key parameter nor evm_private_key environment variable
-                       are provided, or if the private key format is invalid.
-        
-        Note:
-            The adapter stores the infra_key from environment but constructs RPC URLs dynamically
-            based on chain_id from the permit. This enables efficient multi-chain support.
+            ValueError: If neither ``private_key`` nor the ``evm_private_key`` environment
+                variable is present, or if the key format is invalid.
         """
         # Resolve private key: parameter takes precedence over environment variable
         self._resolved_pk = private_key if private_key else get_private_key_from_env()
@@ -156,45 +156,36 @@ class EVMAdapter(AdapterFactory):
         self.account = Account.from_key(self._resolved_pk)
         self.wallet_address = AsyncWeb3.to_checksum_address(self.account.address)
         
-        # Load optional infrastructure key for RPC endpoint construction
-        self._infra_key = get_infra_key_from_env()
-        self._rpc_url = rpc_url
-
-    def _get_web3_instance(self, chain_id: int) -> AsyncWeb3:
+        
+    def _get_web3_instance(self, rpc_url: str) -> AsyncWeb3:
         """
-        Create and return an AsyncWeb3 instance for the specified blockchain.
-        
-        This method dynamically constructs the RPC URL based on:
-        1. The chain_id (automatically routing to correct network)
-        2. Configured infrastructure key (if available, uses premium endpoints)
-        3. Fallback to public RPC endpoints (if no infrastructure key)
-        
-        The method handles RPC URL construction transparently, allowing the adapter
-        to work with any EVM-compatible chain without storing chain-specific state.
-        
+        Create and return an :class:`AsyncWeb3` instance for the given RPC endpoint.
+
+        The caller is responsible for resolving the correct RPC URL before invoking
+        this method — typically sourced from :attr:`EVMPaymentComponent.rpc_url` or
+        an equivalent field on the permit object.  This keeps the method stateless and
+        free of chain-routing logic.
+
         Args:
-            chain_id: EVM chain ID as integer (1=Ethereum, 11155111=Sepolia, etc.)
-        
+            rpc_url: Fully-qualified HTTP(S) RPC endpoint URL for the target EVM network
+                (e.g. ``"https://mainnet.infura.io/v3/<key>"`` or a public endpoint).
+
         Returns:
-            AsyncWeb3: Configured AsyncWeb3 instance connected to the appropriate RPC
-        
+            :class:`AsyncWeb3` configured with an :class:`AsyncHTTPProvider` pointed at
+            *rpc_url* and the instance-level ``request_timeout``.
+
         Raises:
-            ValueError: If the chain_id is not supported or RPC URL cannot be determined
-        
-        Example:
-            # Automatically uses evm_infra_key if configured
-            web3 = self._get_web3_instance(1)  # Ethereum Mainnet
+            ValueError: If *rpc_url* is empty or ``None``.
+
+        Example::
+
+            rpc_url = payment_component.rpc_url  # sourced from EVMPaymentComponent
+            web3 = self._get_web3_instance(rpc_url)
             balance = await web3.eth.get_balance("0x...")
         """
-        # Get RPC URL with infrastructure key consideration
-        rpc_url = self._rpc_url or get_rpc_url(chain_id, self._infra_key)
-        
         if not rpc_url:
-            raise ValueError(
-                f"Unsupported chain_id: {chain_id}. "
-                f"Supported chains: Ethereum (1), Sepolia (11155111)"
-            )
-        
+            raise ValueError("RPC URL could not be determined for the given chain_id.")
+
         return AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(
             rpc_url,
             request_kwargs={"timeout": self._request_timeout}
@@ -212,19 +203,37 @@ class EVMAdapter(AdapterFactory):
           ``transferWithAuthorization`` is preferred.
         - All other tokens: Permit2 ``permitTransferFrom`` is used as fallback.
 
-        Signing is performed entirely in-process via ``sign_universal``.
+        Signing is performed entirely in-process via ``sign_universal``.  The chain
+        ID is parsed from ``payment_component.caip2`` via
+        ``parse_caip2_eip155_chain_id``; no ``metadata`` dict is accessed.
 
         Args:
-            payment_component: EVMPaymentComponent with token, chain, amount and
-                metadata fields (``wallet_address``, ``decimals``, ``name``,
-                ``version``).
+            payment_component: :class:`EVMPaymentComponent` supplying all required
+                signing parameters as first-class fields:
+
+                * ``token`` — ERC-20 contract address to authorize.
+                * ``caip2`` — CAIP-2 chain identifier (e.g. ``"eip155:11155111"``);
+                  the numeric chain ID is extracted automatically.
+                * ``pay_to`` — recipient / spender address that receives the
+                  authorization (server wallet address on the counterparty side).
+                * ``amount`` — human-readable payment amount (e.g. ``1.5`` for
+                  1.5 USDC); converted to smallest token units using
+                  ``token_decimals``.
+                * ``token_decimals`` — decimal precision of the token (e.g. ``6``
+                  for USDC).
+                * ``currency`` — currency code used to select the signing scheme
+                  (e.g. ``"USDC"`` triggers ERC-3009; others fall back to Permit2).
+                * ``token_name`` — EIP-712 domain name of the token contract
+                  (required for ERC-3009 domain separator; unused for Permit2).
+                * ``token_version`` — EIP-712 domain version string (required for
+                  ERC-3009; unused for Permit2).
 
         Returns:
             ``ERC3009Authorization`` when the currency supports ERC-3009;
             ``Permit2Signature`` otherwise.
 
         Raises:
-            ValueError: If the chain is unsupported or parameters are invalid.
+            ValueError: If the chain is unsupported or required fields are invalid.
             TypeError: If the private key is not available.
         """
         if not self._resolved_pk:
@@ -232,16 +241,10 @@ class EVMAdapter(AdapterFactory):
 
         # Extract permit parameters from payment component
         owner = self.wallet_address
-        spender = AsyncWeb3.to_checksum_address(payment_component.metadata.get("wallet_address"))
+        spender = AsyncWeb3.to_checksum_address(payment_component.pay_to)
         token = AsyncWeb3.to_checksum_address(payment_component.token)
-        chain_id = int(payment_component.chain_id)
-        decimals = int(payment_component.metadata.get("decimals"))
-
-        # Validate chain support
-        caip2_id = f"eip155:{chain_id}"
-        chain_config = get_chain_config(caip2_id)
-        if not chain_config:
-            raise ValueError(f"Unsupported chain: {chain_id}")
+        chain_id = parse_caip2_eip155_chain_id(payment_component.caip2)
+        decimals = int(payment_component.token_decimals)
 
         value = int(amount_to_value(amount=payment_component.amount, decimals=decimals))
         deadline = int(time.time()) + 600
@@ -257,8 +260,8 @@ class EVMAdapter(AdapterFactory):
                 receiver=spender,
                 amount=value,
                 scheme="erc3009",
-                domain_name=payment_component.metadata.get("name"),
-                domain_version=str(payment_component.metadata.get("version", "2")),
+                domain_name=payment_component.token_name,
+                domain_version=str(payment_component.token_version),
                 deadline=deadline,
             )
         else:
@@ -352,8 +355,8 @@ class EVMAdapter(AdapterFactory):
                 valid_after = permit.validAfter
                 nonce     = permit.nonce          # bytes32 hex string
                 scheme    = "erc3009"
-                domain_name    = payment_requirement.metadata.get("name")
-                domain_version = str(payment_requirement.metadata.get("version", "2"))
+                domain_name    = payment_requirement.token_name
+                domain_version = str(payment_requirement.token_version)
                 permit2_address = _PERMIT2_ADDRESS
             else:  # Permit2Signature
                 sender   = permit.owner
@@ -388,7 +391,7 @@ class EVMAdapter(AdapterFactory):
             #    payment_requirement.amount is human-readable USD (e.g. 1.5)
             #    authorized_value is in the token's smallest unit
             # ----------------------------------------------------------------
-            decimals = int(payment_requirement.metadata.get("decimals", 6))
+            decimals = int(payment_requirement.token_decimals)
             required_value = int(
                 amount_to_value(amount=payment_requirement.amount, decimals=decimals)
             )
@@ -416,7 +419,7 @@ class EVMAdapter(AdapterFactory):
             # ----------------------------------------------------------------
             # 4. On-chain balance check
             # ----------------------------------------------------------------
-            web3 = self._get_web3_instance(permit.chain_id)
+            web3 = self._get_web3_instance(EVMRegistry.get_rpc_url_by_caip2(f"eip155:{permit.chain_id}"))
             token_address = AsyncWeb3.to_checksum_address(permit.token)
             owner_balance = await self.get_balance(sender, token_address, web3)
 
@@ -508,7 +511,7 @@ class EVMAdapter(AdapterFactory):
                     error_message="ERC3009Authorization is missing signature",
                 )
             try:
-                web3 = self._get_web3_instance(permit.chain_id)
+                web3 = self._get_web3_instance(EVMRegistry.get_rpc_url_by_caip2(f"eip155:{permit.chain_id}"))
                 tx_dict = await self._construct_erc3009_transaction(permit, web3)
                 if "error" in tx_dict:
                     return EVMTransactionConfirmation(
@@ -526,7 +529,7 @@ class EVMAdapter(AdapterFactory):
 
         elif isinstance(permit, Permit2Signature):
             try:
-                web3 = self._get_web3_instance(permit.chain_id)
+                web3 = self._get_web3_instance(EVMRegistry.get_rpc_url_by_caip2(f"eip155:{permit.chain_id}"))
                 tx_dict = await self._construct_permit2_transaction(permit, web3)
                 if "error" in tx_dict:
                     return EVMTransactionConfirmation(
@@ -585,7 +588,7 @@ class EVMAdapter(AdapterFactory):
             
             # If web3 is not provided, create a default instance (may not be correct chain)
             if not web3:
-                web3 = self._get_web3_instance(1)  # Default to Ethereum mainnet
+                web3 = self._get_web3_instance(EVMRegistry.get_rpc_url_by_caip2("eip155:1"))  # Default to Ethereum mainnet
             
             contract = web3.eth.contract(
                 address=token_address,
@@ -838,7 +841,7 @@ class EVMAdapter(AdapterFactory):
             values (int): The raw amount (in wei) to approve.
         """
         
-        w3 = self._get_web3_instance(chain_id)
+        w3 = self._get_web3_instance(EVMRegistry.get_rpc_url_by_caip2(f"eip155:{chain_id}"))
         return await approve_erc20(
             w3=w3,
             token_addr=token_addr,
@@ -888,7 +891,7 @@ class EVMAdapter(AdapterFactory):
 
             # Permit2 path: the Permit2 contract must be approved to move
             # the token on the signer's behalf before the signature is valid.
-            w3 = self._get_web3_instance(component.chain_id)
+            w3 = self._get_web3_instance(EVMRegistry.get_rpc_url_by_caip2(component.caip2))
             allowance = await query_erc20_allowance(
                 w3=w3,
                 token_addr=component.token,
@@ -898,7 +901,7 @@ class EVMAdapter(AdapterFactory):
 
             if allowance < _LOW_ALLOWANCE_THRESHOLD:
                 approval = self.permit2_approve(
-                    chain_id=component.chain_id,
+                    chain_id=parse_caip2_eip155_chain_id(component.caip2),
                     token_addr=component.token,
                     values=_MAX_UINT256,
                 )

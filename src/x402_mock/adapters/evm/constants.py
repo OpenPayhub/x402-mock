@@ -7,7 +7,7 @@ and chain state initialization based on permit data.
 """
 
 import os
-from typing import Dict, Optional, Tuple, List, Any, Union
+from typing import Dict, Optional, Tuple, List, Any, Literal
 from decimal import Decimal, InvalidOperation
 from pydantic import BaseModel, Field
 
@@ -55,6 +55,9 @@ class EvmChainConfig(BaseModel):
     public_rpc_url: str = Field(..., description="Public RPC endpoint (fallback when no infra key)")
     explorer_url: str = Field(..., description="Block explorer URL")
     assets: Dict[str, EvmAssetConfig] = Field(default_factory=dict, description="Supported assets")
+
+
+
 
 # ---------------------------------------------------------------------------
 # ERC-1271 constants
@@ -158,75 +161,334 @@ _EVM_CHAINS_DATA: Dict = {
     },
 }
 
-
-
-def parse_token_address_and_decimals(
-    token_list: List[Dict[str, Any]], 
-    chain_id: int, 
-    symbol: str
-) -> Tuple[str, int]:
+class PublicRpcType(BaseModel):
     """
-    Locates a token's contract address and decimals within a metadata list.
-
-    Args:
-        token_list (List[Dict[str, Any]]): A list of dictionaries containing token metadata.
-        chain_id (int): The EIP-155 chain identifier to filter by.
-        symbol (str): The token ticker symbol (e.g., 'WETH', 'USDC').
-
-    Returns:
-        Tuple[str, int]: A tuple containing the (address, decimals).
-
-    Raises:
-        ValueError: If the token is not found on the specified chain, or if the 
-                    found token contains invalid/missing address or decimals data.
+    Configuration model for a single public RPC endpoint.
+    Defines the connection URL and privacy tracking policies of the provider.
     """
-    search_symbol = symbol.strip().upper()
-
-    for token in token_list:
-        # Match both chainId and symbol (case-insensitive)
-        if (
-            token.get("chainId") == chain_id and 
-            str(token.get("symbol", "")).upper() == search_symbol
-        ):
-            address = token.get("address")
-            decimals = token.get("decimals")
-
-            # Strict validation to ensure the returned data is usable
-            if not isinstance(address, str) or not isinstance(decimals, int):
-                raise ValueError(
-                    f"Invalid metadata for '{symbol}' on chain {chain_id}. "
-                    f"Expected (str, int), got (address: {type(address).__name__}, "
-                    f"decimals: {type(decimals).__name__})"
-                )
-
-            return address, decimals
-
-    raise ValueError(
-        f"Token with symbol '{symbol}' was not found in the provided list for chain ID {chain_id}."
+    url: str = Field(..., description="The HTTP or WebSocket URL for the RPC endpoint")
+    
+    tracking: Literal["none", "limited", "yes", ""] = Field(
+        default="", 
+        description="Indicates the provider's data tracking policy (none, limited, yes, or unspecified)"
     )
 
-
-def fetch_evm_token_list() -> List[Dict[str, Any]]:
+class EvmChainList(BaseModel):
     """
-    Fetches the official Uniswap token list and extracts token metadata.
-
-    Returns:
-        List[Dict[str, Any]]: A list of token metadata objects.
-
-    Raises:
-        ValueError: If the response is empty or the 'tokens' key is missing.
-        httpx.HTTPError: If the network request fails.
+    Configuration model for an EVM-compatible blockchain network.
+    Aggregates chain identification and available public RPC endpoints.
     """
-    uniswap_url = "https://tokens.uniswap.org"
-    data = fetch_json(uniswap_url)
+    chainId: int = Field(..., description="The unique numerical identifier for the blockchain network")
     
-    tokens = data.get("tokens")
-    if not tokens:
+    rpc: List[PublicRpcType] = Field(..., description="List of available public RPC endpoints associated with this chain")
+
+
+class EvmPublicRpcFromChainList:
+    """
+    Utility class for fetching and selecting public RPC URLs from Chainlist.org.
+    
+    This class provides methods to fetch chain data from Chainlist.org, build
+    EvmChainList objects for specific chains, and pick public RPC URLs based on
+    tracking preferences and protocol.
+    
+    Attributes:
+        _cached_data: Optional cached chainlist data to avoid repeated network requests.
+    """
+    
+    def __init__(self) -> None:
+        self._cached_data: Optional[List[Dict[str, Any]]] = None
+    
+    def clear(self) -> None:
+        """
+        Clear the cached chainlist data.
+        
+        This method removes any cached data fetched from Chainlist.org,
+        forcing the next request to fetch fresh data from the network.
+        """
+        self._cached_data = None
+    
+    def fetch_data_from_chainlist(self) -> List[Dict[str, Any]]:
+        """
+        Fetch chainlist data from Chainlist.org.
+        
+        Returns:
+            List[Dict[str, Any]]: A list of chain entries from Chainlist.org.
+            
+        Raises:
+            ValueError: If the response format is unexpected (not a list).
+            httpx.HTTPStatusError: If the HTTP request fails.
+            RuntimeError: If the response is not valid JSON.
+        """
+        chainlist_url = "https://chainlist.org/rpcs.json"
+        data = fetch_json(chainlist_url)
+        if not isinstance(data, list):
+            raise ValueError(f"Unexpected data format from {chainlist_url}: expected a list of chain entries")
+        self._cached_data = data
+        return data
+    
+    def _get_chainlist_data(self) -> List[Dict[str, Any]]:
+        """
+        Get chainlist data, using cache if available.
+        
+        Returns:
+            List[Dict[str, Any]]: Chainlist data.
+        """
+        if self._cached_data is None:
+            return self.fetch_data_from_chainlist()
+        return self._cached_data
+    
+    def get_specific_chain_public_rpcs(self, caip2: str) -> Optional[EvmChainList]:
+        """
+        Build an EvmChainList object for a given CAIP-2 chain identifier.
+        
+        Args:
+            caip2: CAIP-2 chain identifier (e.g., 'eip155:1').
+            
+        Returns:
+            Optional[EvmChainList]: EvmChainList object if chain is found, None otherwise.
+        """
+        chain_id = parse_caip2_eip155_chain_id(caip2)
+        chainlist_data = self._get_chainlist_data()
+        
+        for entry in chainlist_data:
+            if entry.get("chainId") == chain_id:
+                return EvmChainList(
+                    chainId=chain_id,
+                    rpc=entry.get("rpc", [])
+                )
+        return None
+    
+    def pick_public_rpc(self, caip2: str, start_with: Literal["https://", "wss://"] = "https://", 
+                       tracking_type: Optional[Literal["none", "limited", "yes"]] = None) -> Optional[str]:
+        """
+        Pick a public RPC URL from Chainlist.org for a given CAIP-2 chain ID.
+        
+        Args:
+            caip2: CAIP-2 chain identifier (e.g., 'eip155:1').
+            start_with: Protocol prefix to filter by (defaults to "https://").
+            tracking_type: Tracking preference to filter by (None for any).
+            
+        Returns:
+            Optional[str]: Public RPC URL if found, None otherwise.
+        """
+        chain_list = self.get_specific_chain_public_rpcs(caip2)
+        if chain_list is None:
+            raise ValueError(f"Chain with CAIP-2 ID '{caip2}' not found in Chainlist.org data")
+            
+        for entry in chain_list.rpc:
+            if entry.tracking == tracking_type and entry.url.startswith(start_with):
+                return entry.url
+        raise ValueError(f"No public RPC URL found for chain '{caip2}' with tracking='{tracking_type}' and protocol='{start_with}'")
+    
+
+class EvmTokenListFromUniswap:
+    """
+    Utility class for fetching and parsing ERC-20 token metadata from the Uniswap token list.
+    
+    This class provides methods to fetch token list data from Uniswap's official token list,
+    cache the results, and extract token contract addresses and decimals for specific chains.
+    
+    Attributes:
+        _cached_token_list: Optional cached token list data to avoid repeated network requests.
+    """
+    
+    def __init__(self) -> None:
+        self._cached_token_list: Optional[List[Dict[str, Any]]] = None
+    
+    def clear(self) -> None:
+        """
+        Clear the cached token list data.
+        
+        This method removes any cached data fetched from Uniswap's token list,
+        forcing the next request to fetch fresh data from the network.
+        """
+        self._cached_token_list = None
+    
+    def fetch_token_list(self) -> List[Dict[str, Any]]:
+        """
+        Fetches the official Uniswap token list and extracts token metadata.
+        
+        Returns:
+            List[Dict[str, Any]]: A list of token metadata objects.
+            
+        Raises:
+            ValueError: If the response is empty or the 'tokens' key is missing.
+            httpx.HTTPError: If the network request fails.
+        """
+        uniswap_url = "https://tokens.uniswap.org"
+        data = fetch_json(uniswap_url)
+        
+        tokens = data.get("tokens")
+        if not tokens:
+            raise ValueError(
+                f"Failed to extract tokens: 'tokens' key missing or empty at {uniswap_url}"
+            )
+        
+        self._cached_token_list = tokens
+        return tokens
+    
+    def _get_token_list(self) -> List[Dict[str, Any]]:
+        """
+        Get token list data, using cache if available.
+        
+        Returns:
+            List[Dict[str, Any]]: Token list data.
+        """
+        if self._cached_token_list is None:
+            return self.fetch_token_list()
+        return self._cached_token_list
+    
+    def get_token_address_and_decimals(self, caip2: str, symbol: str) -> Tuple[str, int]:
+        """
+        Locates a token's contract address and decimals within the Uniswap token list.
+        
+        Args:
+            caip2 (str): The CAIP-2 compliant chain identifier (e.g., 'eip155:1').
+            symbol (str): The token ticker symbol (e.g., 'WETH', 'USDC').
+            
+        Returns:
+            Tuple[str, int]: A tuple containing the (address, decimals).
+            
+        Raises:
+            ValueError: If the token is not found on the specified chain, or if the 
+                        found token contains invalid/missing address or decimals data.
+        """
+        token_list = self._get_token_list()
+        search_symbol = symbol.strip().upper()
+        chain_id = parse_caip2_eip155_chain_id(caip2)
+        
+        for token in token_list:
+            # Match both chainId and symbol (case-insensitive)
+            if (
+                token.get("chainId") == chain_id and 
+                str(token.get("symbol", "")).upper() == search_symbol
+            ):
+                address = token.get("address")
+                decimals = token.get("decimals")
+                
+                # Strict validation to ensure the returned data is usable
+                if not isinstance(address, str) or not isinstance(decimals, int):
+                    raise ValueError(
+                        f"Invalid metadata for '{symbol}' on chain {chain_id}. "
+                        f"Expected (str, int), got (address: {type(address).__name__}, "
+                        f"decimals: {type(decimals).__name__})"
+                    )
+                
+                return address, decimals
+        
         raise ValueError(
-            f"Failed to extract tokens: 'tokens' key missing or empty at {uniswap_url}"
+            f"Token with symbol '{symbol}' was not found in the Uniswap token list for chain ID {chain_id}."
         )
-    
-    return tokens
+
+class EvmChainInfoFromEthereumLists:
+    """
+    Utility class for fetching and parsing EVM chain metadata from the ethereum-lists repository.
+
+    The primary purpose of this class is to resolve Infura and Alchemy RPC endpoints
+    (with API key placeholders) for a given CAIP-2 chain identifier, as well as to
+    enumerate public RPC URLs that require no API key.
+
+    Attributes:
+        _cached_chain_info: Per-chain cache to avoid redundant network requests.
+    """
+
+    def __init__(self) -> None:
+        self._cached_chain_info: Dict[str, EvmChainInfo] = {}
+
+    def clear(self) -> None:
+        """
+        Clear the cached chain info data.
+
+        Removes all cached entries fetched from ethereum-lists, forcing the next
+        call to retrieve fresh data from the network.
+        """
+        self._cached_chain_info.clear()
+
+    def fetch_chain_info(self, caip2: str) -> EvmChainInfo:
+        """
+        Fetch chain configuration data from the ethereum-lists repository.
+
+        Args:
+            caip2 (str): CAIP-2 chain identifier (e.g., 'eip155:1').
+
+        Returns:
+            EvmChainInfo: Validated chain specification object.
+
+        Raises:
+            httpx.HTTPError: If the upstream file is not found or unreachable.
+            TypeError: If the returned payload does not match the EvmChainInfo schema.
+        """
+        return fetch_evm_chain_info(caip2)
+
+    def _get_chain_info(self, caip2: str) -> EvmChainInfo:
+        """
+        Return chain info from cache, fetching from the network if not yet cached.
+
+        Args:
+            caip2 (str): CAIP-2 chain identifier.
+
+        Returns:
+            EvmChainInfo: Chain info data.
+        """
+        caip2_lower = caip2.lower()
+        if caip2_lower not in self._cached_chain_info:
+            self._cached_chain_info[caip2_lower] = self.fetch_chain_info(caip2_lower)
+        return self._cached_chain_info[caip2_lower]
+
+    def get_infura_rpc_url(
+        self,
+        caip2: str,
+        start_with: Literal["https:", "wss:"] = "https:",
+    ) -> Optional[str]:
+        """
+        Return the first Infura RPC URL with an API key placeholder for a given chain.
+
+        Args:
+            caip2 (str): CAIP-2 chain identifier (e.g., 'eip155:1').
+            start_with (Literal["https:", "wss:"]): Protocol prefix to filter by.
+                Defaults to "https:".
+
+        Returns:
+            Optional[str]: The first matching Infura RPC URL, or None if not found.
+        """
+        chain_info = self._get_chain_info(caip2)
+        private_urls = parse_private_url(chain_info.rpc, start_with=start_with)
+        infura_urls = extract_endpoint_info(private_urls, endpoint_type="Infura")
+        return infura_urls[0] if infura_urls else None
+
+    def get_alchemy_rpc_url(
+        self,
+        caip2: str,
+        start_with: Literal["https:", "wss:"] = "https:",
+    ) -> Optional[str]:
+        """
+        Return the first Alchemy RPC URL with an API key placeholder for a given chain.
+
+        Args:
+            caip2 (str): CAIP-2 chain identifier (e.g., 'eip155:1').
+            start_with (Literal["https:", "wss:"]): Protocol prefix to filter by.
+                Defaults to "https:".
+
+        Returns:
+            Optional[str]: The first matching Alchemy RPC URL, or None if not found.
+        """
+        chain_info = self._get_chain_info(caip2)
+        private_urls = parse_private_url(chain_info.rpc, start_with=start_with)
+        alchemy_urls = extract_endpoint_info(private_urls, endpoint_type="Alchemy")
+        return alchemy_urls[0] if alchemy_urls else None
+
+    def get_public_rpc_urls(self, caip2: str) -> List[str]:
+        """
+        Return all public RPC URLs (without API key placeholders) for a given chain.
+
+        Args:
+            caip2 (str): CAIP-2 chain identifier (e.g., 'eip155:1').
+
+        Returns:
+            List[str]: Public RPC URLs that require no API key.
+        """
+        chain_info = self._get_chain_info(caip2)
+        return [url for url in chain_info.rpc if isinstance(url, str) and "${" not in url]
 
 
 def fetch_evm_chain_info(caip2: str) -> EvmChainInfo:
@@ -243,7 +505,7 @@ def fetch_evm_chain_info(caip2: str) -> EvmChainInfo:
         httpx.HTTPError: If the chain configuration file is not found or unreachable.
         TypeError: If the returned payload does not match the EvmChainInfo schema.
     """
-    chain_id = _parse_caip2_eip155_chain_id(caip2)
+    chain_id = parse_caip2_eip155_chain_id(caip2)
     url = (
         "https://raw.githubusercontent.com/ethereum-lists/chains/master/_data/chains/"
         f"eip155-{chain_id}.json"
@@ -306,7 +568,7 @@ def fetch_json(url: str, timeout: float = 10.0) -> Dict[str, Any]:
             ) from exc
 
 
-def _parse_caip2_eip155_chain_id(caip2: str) -> int:
+def parse_caip2_eip155_chain_id(caip2: str) -> int:
     """
     Parses a CAIP-2 identifier (e.g., 'eip155:1' or 'eip155-1') into an integer chain ID.
 
@@ -351,36 +613,7 @@ def _parse_caip2_eip155_chain_id(caip2: str) -> int:
     return chain_id
 
 
-def parse_public_rpc_url(rpcs: List[str], start_with: str = "https://") -> Optional[str]:
-    """Pick a public (no-key) RPC URL from a chain's RPC list.
-
-    This function prefers plain HTTPS endpoints that do not contain common
-    placeholder markers (`$` or `{...}`), which typically indicate an API key is required.
-
-    Args:
-        rpcs: RPC URL list from the chain metadata payload.
-        start_with: Scheme/prefix filter (defaults to HTTPS).
-
-    Returns:
-        A public RPC URL, or None if none is found.
-    """
-    if not rpcs or not isinstance(rpcs, list):
-        raise ValueError(
-            "No RPC URLs provided in chain configuration; rpcs must be a list of strings, "
-            f"but {type(rpcs).__name__} was provided"
-        )
-
-    for rpc in rpcs:
-        if not isinstance(rpc, str):
-            continue
-        if not rpc.startswith(start_with):
-            continue
-        if "$" in rpc or "{" in rpc or "}" in rpc:
-            continue
-        return rpc
-
-
-def fetch_erc20_name_and_version(*, rpc_url: str, token_address: str) -> Tuple[Optional[str], str]:
+def fetch_erc20_name_version_decimals(*, rpc_url: str, token_address: str) -> Tuple[Optional[str], str]:
     """Fetch token `name()` and optional EIP-712 `version()` from the chain RPC.
 
     Notes:
@@ -410,6 +643,13 @@ def fetch_erc20_name_and_version(*, rpc_url: str, token_address: str) -> Tuple[O
             "inputs": [],
             "outputs": [{"name": "", "type": "string"}],
         },
+        {
+            "name": "decimals",
+            "type": "function",
+            "stateMutability": "view",
+            "inputs": [],
+            "outputs": [{"name": "", "type": "uint8"}],
+        }
     ]
     contract = w3.eth.contract(address=checksum, abi=abi)
 
@@ -429,13 +669,19 @@ def fetch_erc20_name_and_version(*, rpc_url: str, token_address: str) -> Tuple[O
             version = val.strip()
     except Exception:
         version = "0"
+        
 
-    return name, version
+    decimals = contract.functions.decimals().call()
+    if not isinstance(decimals, int) or decimals < 0:
+        raise ValueError(f"Invalid decimals value: {decimals}")
+
+
+    return name, version, decimals
 
 
 def parse_private_url(
     urls: List[str], 
-    start_with: Union[str, Tuple[str, ...]] = "https:"
+    start_with: Literal["https:", "wss:"] = "https:"
 ) -> List[str]:
     """
     Filters a list of URLs based on a protocol prefix and the presence of API key placeholders.
@@ -445,21 +691,21 @@ def parse_private_url(
 
     Args:
         urls (List[str]): A list of RPC or WebSocket URL strings.
-        start_with (Union[str, Tuple[str, ...]]): The protocol prefix to filter by. 
-            Defaults to "https:". Can be a string or a tuple of strings.
+        start_with (Literal["https:", "wss:"]): The protocol prefix to filter by. 
+            Defaults to "https:".
 
     Returns:
         List[str]: A list of URLs matching the prefix and containing a '${' placeholder.
                    Returns an empty list if no matches are found.
 
     Raises:
-        TypeError: If 'urls' is not a list or 'start_with' is not a string/tuple.
+        TypeError: If 'urls' is not a list or 'start_with' is not a Literal["https:", "wss:"].
     """
     if not isinstance(urls, list):
         raise TypeError(f"Expected 'urls' to be a list, got {type(urls).__name__}")
     
-    if not isinstance(start_with, (str, tuple)):
-        raise TypeError(f"Expected 'start_with' to be str or tuple, got {type(start_with).__name__}")
+    if not isinstance(start_with, str) or start_with not in ("https:", "wss:"):
+        raise TypeError(f"Expected 'start_with' to be Literal['https:', 'wss:'], got {start_with}")
 
     filtered_urls = []
     
@@ -472,6 +718,33 @@ def parse_private_url(
             filtered_urls.append(url)
             
     return filtered_urls
+
+
+def extract_endpoint_info(url_list: List[str], endpoint_type: Literal["Infura", "Alchemy"] = "Infura") -> List[str]:
+    """
+    Filter URLs by endpoint type and extract API key placeholders.
+
+    Args:
+        url_list (List[str]): List of RPC endpoint URLs containing API key placeholders like ${KEY}.
+        endpoint_type (Literal["Infura", "Alchemy"], optional): Type of endpoint to filter, e.g., "Infura" or "Alchemy".
+                                       Case-insensitive. Defaults to "Infura".
+
+    Returns:
+        List[str]: List of matched URLs.
+    """
+    endpoint_type = endpoint_type.lower()
+    results = []
+
+    for url in url_list:
+        url_lower = url.lower()
+        if (endpoint_type == "infura" and "infura.io" in url_lower) or \
+           (endpoint_type == "alchemy" and "alchemy.com" in url_lower):
+            start = url.find("${")
+            end = url.find("}", start)
+            if start != -1 and end != -1:
+                results.append(url)
+
+    return results
 
  
 def get_private_key_from_env() -> Optional[str]:
@@ -502,7 +775,7 @@ def get_private_key_from_env() -> Optional[str]:
     return os.getenv("EVM_PRIVATE_KEY")
 
 
-def get_rpc_key_from_env() -> Optional[str]:
+def get_rpc_key_from_env(env_variable_name: str = "EVM_INFURA_KEY") -> Optional[str]:
     """
     Load EVM infrastructure API key from environment variables.
     
@@ -528,7 +801,7 @@ def get_rpc_key_from_env() -> Optional[str]:
         # Will be used to construct premium RPC URLs like:
         # "https://eth-mainnet.g.alchemy.com/v2/xyz123abc456..."
     """
-    return os.getenv("EVM_PRC_KEY")
+    return os.getenv(env_variable_name)
 
 
 def amount_to_value(*, amount: float | int | str | Decimal, decimals: int) -> int:

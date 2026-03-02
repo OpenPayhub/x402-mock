@@ -158,6 +158,7 @@ EVM_INFURA_KEY=your_infura_key_here  # 可选
 ```python
 # Server 最简单端示例代码
 from x402_mock.servers import Http402Server, create_private_key
+from x402_mock.adapters.evm.schemas import EVMPaymentComponent
 
 token_key = create_private_key() # 服务端签名私钥，用于对 access_token 进行签发和验证（非区块链钱包私钥，可由配置提供）
 
@@ -166,9 +167,12 @@ app = Http402Server(
   token_expires_in=300 # access_token到期秒数
 )
 app.add_payment_method(
-    chain_id="eip155:11155111",
-    amount=0.5,
-    currency="USDC",
+    EVMPaymentComponent(
+        amount=0.5,
+        currency="USDC",
+        caip2="eip155:11155111",
+        token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+    )
 ) # 接受的收款方式
 
 @app.get("/api/protected-data") # 使用方式继承fastapi
@@ -191,17 +195,21 @@ if __name__ == "__main__":
 ```python
 from x402_mock.clients.http_client import Http402Client
 from x402_mock.adapters.adapters_hub import AdapterHub
+from x402_mock.adapters.evm.schemas import EVMPaymentComponent
 
 wpk = "your eoa private key"
 ah = AdapterHub(wpk)
 
 async with Http402Client() as client: # 使用方式继承httpx，
   clinet.add_payment_method(
-            chain_id="eip155:11155111",
-            amount=0.8, # 限制付款金额
-            currency="USDC"
+            EVMPaymentComponent(
+                caip2="eip155:11155111",
+                amount=0.8,
+                currency="USDC",
+                token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+            )
         ) # 增加付款方式，先设置的付款方式优先匹配。
-  await ah.initialize(client_role=True)  # Initialize adapters for client role (pre-signing setup)
+
   response = client.get("http://localhost:8000/api/protected-data") # 请求资源端口
 
 ```
@@ -220,13 +228,13 @@ async with Http402Client() as client: # 使用方式继承httpx，
 * ✅ 通用 ERC20：Permit2 离线签名与验证（覆盖大多数 ERC20）
 * ✅ 链上 USDC 转账，tx_hash 可查
 * ✅ 异步链上结算，不阻塞业务
+* ✅ 覆盖 EVM 链，理论上支持所有代币的签名（Ethereum、Polygon、Arbitrum、Optimism 等）
 * 🚀 生产级可运行实现
 
 ---
 
 ## Roadmap
 
-* [ ] 覆盖 EVM 链（Ethereum、Polygon、Arbitrum、Optimism 等）
 * [ ] 支持 智能合约钱包地址收款
 * [ ] 支持 EIP-6492（未部署合约的签名验证）
 * [ ] 支持 SVM（Solana Virtual Machine）及 Solana 生态

@@ -7,10 +7,12 @@ than a pre-built object) so callers can feed values from any source -- a
 parsed HTTP header, a database row, or a schema model -- without coupling to
 a specific container type.
 
-All cryptographic operations are performed in-process using ``eth_account``;
-no RPC calls or on-chain state queries are made.  Optional on-chain state
-(balance, nonce) may be supplied by the caller to enable richer semantic
-checks alongside the cryptographic verification.
+All cryptographic operations are performed in-process using ``eth_account``.
+When a Web3 provider is supplied, some verifiers may also perform lightweight
+on-chain checks (e.g. ERC-1271 wallet validation, or querying a token's
+``DOMAIN_SEPARATOR``) to prevent late settlement failures. Optional on-chain
+state (balance, nonce) may also be supplied by the caller to enable richer
+semantic checks alongside the cryptographic verification.
 
 Current coverage
 ----------------
@@ -135,6 +137,59 @@ def _is_valid_evm_address(addr: Optional[str]) -> bool:
     return isinstance(addr, str) and addr.startswith("0x") and len(addr) == 42
 
 
+async def _query_eip712_domain_separator(
+    w3: AsyncWeb3,
+    *,
+    token: str,
+) -> bytes:
+    """
+    Query an ERC-20 token's EIP-712 domain separator on-chain.
+
+    Many EIP-712 / permit-style tokens expose a ``DOMAIN_SEPARATOR()`` view
+    function. Some expose ``domainSeparator()`` instead. This helper tries
+    both to support common variants.
+
+    Args:
+        w3:    AsyncWeb3 instance connected to the target chain.
+        token: Token contract address.
+
+    Returns:
+        The domain separator as raw 32-byte value.
+
+    Raises:
+        Exception: If neither selector is available or the call fails.
+    """
+    checksum_token = w3.to_checksum_address(token)
+
+    abi_domain_separator = [
+        {
+            "name": "DOMAIN_SEPARATOR",
+            "type": "function",
+            "stateMutability": "view",
+            "inputs": [],
+            "outputs": [{"name": "", "type": "bytes32"}],
+        }
+    ]
+    contract = w3.eth.contract(address=checksum_token, abi=abi_domain_separator)
+    try:
+        return bytes(await contract.functions.DOMAIN_SEPARATOR().call())
+    except Exception:
+        # Fallback selector used by some contracts.
+        abi_domain_separator_fallback = [
+            {
+                "name": "domainSeparator",
+                "type": "function",
+                "stateMutability": "view",
+                "inputs": [],
+                "outputs": [{"name": "", "type": "bytes32"}],
+            }
+        ]
+        contract = w3.eth.contract(
+            address=checksum_token, abi=abi_domain_separator_fallback
+        )
+        return bytes(await contract.functions.domainSeparator().call())
+
+
 def _build_erc3009_typed_data_dict(
     *,
     token: str,
@@ -229,10 +284,13 @@ async def verify_erc3009(
        supplied fields and recovers the signer address from (v, r, s).
        The recovered address must equal ``authorizer`` (case-insensitive).
 
-    All five steps are pure in-process operations; no RPC call is made.
-    If the EOA ECDSA check fails and a ``web3.Web3`` instance is provided,
-    an ERC-1271 ``isValidSignature`` call is attempted, enabling smart-contract
-    wallet (e.g. Safe, Argent) support.
+    Cryptographic checks are performed in-process. When a ``web3.Web3`` instance
+    is provided, the verifier may also perform on-chain validation steps such as
+    querying ``DOMAIN_SEPARATOR()`` to ensure the supplied EIP-712 domain
+    parameters match the token contract (preventing late settlement failures).
+    If the EOA ECDSA check fails and ``w3`` is provided, an ERC-1271
+    ``isValidSignature`` call is attempted, enabling smart-contract wallet
+    (e.g. Safe, Argent) support.
 
     Args:
         token:          ERC-20 token contract address (0x-prefixed, 42 chars).
@@ -327,6 +385,13 @@ async def verify_erc3009(
     # ------------------------------------------------------------------
     # 1. Address format
     # ------------------------------------------------------------------
+    if not _is_valid_evm_address(token):
+        return _fail(
+            VerificationStatus.INVALID_SIGNATURE,
+            "Invalid token address format.",
+            {"token": token},
+        )
+
     if not _is_valid_evm_address(authorizer):
         return _fail(
             VerificationStatus.INVALID_SIGNATURE,
@@ -397,6 +462,43 @@ async def verify_erc3009(
             domain_version=domain_version,
         )
         signable = encode_typed_data(typed_data_dict)
+    except Exception as exc:
+        return _fail(
+            VerificationStatus.INVALID_SIGNATURE,
+            f"Failed to encode EIP-712 typed data: {exc}",
+            {"error": str(exc)},
+        )
+
+    # Optional: cross-check the off-chain EIP-712 domain against the token's
+    # on-chain ``DOMAIN_SEPARATOR``. This catches mismatched domain fields
+    # (token address / name / version / chainId) early, rather than letting the
+    # later on-chain settlement fail with an "invalid signature" revert.
+    if w3 is not None:
+        try:
+            on_chain_separator = await _query_eip712_domain_separator(w3, token=token)
+        except Exception as exc:
+            return _fail(
+                VerificationStatus.BLOCKCHAIN_ERROR,
+                f"Failed to query token DOMAIN_SEPARATOR: {exc}",
+                {"token": token, "error": str(exc)},
+            )
+
+        expected_separator = bytes(signable.header)
+        if expected_separator != on_chain_separator:
+            return _fail(
+                VerificationStatus.INVALID_SIGNATURE,
+                "EIP-712 domain mismatch: provided token/name/version/chain_id do not match the token contract.",
+                {
+                    "token": token,
+                    "chain_id": chain_id,
+                    "domain_name": domain_name,
+                    "domain_version": domain_version,
+                    "expected_domain_separator": "0x" + expected_separator.hex(),
+                    "on_chain_domain_separator": "0x" + on_chain_separator.hex(),
+                },
+            )
+
+    try:
         sig_verified = await _verify_eip712_signature(
             signable, v=v, r=r, s=s, authorizer=authorizer, w3=w3
         )

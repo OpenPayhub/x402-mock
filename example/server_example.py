@@ -1,6 +1,6 @@
 from x402_mock.servers import Http402Server, generate_token
 from x402_mock.engine.events import TokenIssuedEvent, SettleSuccessEvent, SettleFailedEvent
-
+from x402_mock.adapters.evm.schemas import EVMPaymentComponent
 
 pk = "x402mock_private_key_test"
 token_access = generate_token(
@@ -17,9 +17,12 @@ app = Http402Server(
 
 # Configure payment method
 app.add_payment_method(
-    chain_id="eip155:11155111",
-    amount=0.5,
-    currency="USDC",
+    EVMPaymentComponent(
+        amount=0.5,
+        currency="USDC",
+        caip2="eip155:11155111",
+        token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+    )
 )
 
 

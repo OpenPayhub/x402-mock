@@ -1,9 +1,10 @@
 from x402_mock.clients.http_client import Http402Client
 from x402_mock.adapters.adapters_hub import AdapterHub
+from x402_mock.adapters.evm.schemas import EVMPaymentComponent
 import httpx
 
 pk = "Bearer eyJlxxxxxx" # Replace with actual token
-wpk = "0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+wpk = "0xxxx"
 
 ah = AdapterHub(wpk)
 
@@ -13,11 +14,14 @@ async def main():
         timeout=httpx.Timeout(60.0, read=120.0)
     ) as client:
         client.add_payment_method(
-            chain_id="eip155:11155111",
-            amount=0.8,
-            currency="USDC"
+            EVMPaymentComponent(
+                caip2="eip155:11155111",
+                amount=0.8,
+                currency="USDC",
+                token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+            )
         )
-        await ah.initialize(client_role=True)  # Initialize adapters for client role (pre-signing setup)
+
         return await client.get("http://localhost:8000/api/protected-data", headers={"Authorization": pk})
 
 

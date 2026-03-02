@@ -5,12 +5,12 @@ Provides a transparent middleware layer for httpx that automatically handles
 402 Payment Required responses with permit signing and token exchange.
 """
 
-from typing import Dict, Optional
+from typing import Dict, Optional, Union, Any
 from urllib.parse import urlparse
 
 import httpx
 
-from ..adapters.adapters_hub import AdapterHub
+from ..adapters.adapters_hub import AdapterHub, PaymentComponentTypes
 from ..adapters.unions import PermitTypes
 from ..schemas.https import (
     Server402ResponsePayload,
@@ -61,9 +61,7 @@ class Http402Client(httpx.AsyncClient):
     
     def add_payment_method(
         self,
-        chain_id: str,
-        amount: float,
-        currency: str
+        payment_component: Union[PaymentComponentTypes, Dict[str, Any]]
     ) -> None:
         """
         Register local payment capability.
@@ -72,11 +70,10 @@ class Http402Client(httpx.AsyncClient):
         when encountering 402 responses.
         
         Args:
-            chain_id: Blockchain identifier (e.g., "eip155:11155111")
-            amount: Maximum payment amount supported
-            currency: Currency code (e.g., "USDC")
+            payment_component: A ``PaymentComponentTypes`` instance or a plain dict
+                               that will be coerced into the correct type.
         """
-        self._hub.register_payment_methods(chain_id, amount, currency)
+        self._hub.register_payment_methods(payment_component=payment_component, client_role=True)
     
     # =========================================================================
     # Override httpx.AsyncClient.request to add 402 handling

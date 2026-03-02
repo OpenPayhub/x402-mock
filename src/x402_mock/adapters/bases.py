@@ -270,3 +270,105 @@ class AdapterFactory(ABC):
         """
         pass
 
+
+class AdapterRegistry(ABC):
+    """
+    Abstract Base Class for Payment Method Registration Factory.
+    
+    Defines the factory interface for registering payment methods across different blockchain adapters.
+    All concrete adapter implementations must inherit from this class and implement the
+    payment_method_register() method to ensure consistent payment method registration.
+    
+    This class serves as a factory pattern that enforces a unified specification for how
+    payment methods (both payment collection and disbursement methods) should be registered
+    across different blockchain implementations (EVM, Solana, etc.).
+    
+    Key Responsibilities:
+        1. Provide a standardized interface for payment method registration
+        2. Ensure all adapters follow the same registration pattern
+        3. Enable centralized management of payment methods across different blockchains
+        4. Support extensibility for new payment methods and blockchain types
+    
+    Implementation Requirements:
+        - Each concrete adapter must implement payment_method_register()
+        - Registration should include all supported payment methods for the blockchain
+        - Methods should be registered in a format compatible with the AdapterHub
+        - Registration should handle both server-side and client-side payment operations
+    
+    Example Implementation:
+        class EVMAdapterRegistry(AdapterRegistry):
+            def payment_method_register(self) -> None:
+                # Register EVM-specific payment methods
+                # e.g., ERC20 tokens, native ETH transfers, etc.
+                pass
+        
+        class SolanaAdapterRegistry(AdapterRegistry):
+            def payment_method_register(self) -> None:
+                # Register Solana-specific payment methods
+                # e.g., SPL tokens, native SOL transfers, etc.
+                pass
+    
+    Usage:
+        registry = EVMAdapterRegistry()
+        registry.payment_method_register()
+        # Payment methods are now registered and available through AdapterHub
+    """
+    payment_components: List[BasePaymentComponent] = []
+    
+    @abstractmethod
+    def payment_method_register(self) -> None:
+        """
+        Register payment methods for the specific blockchain adapter.
+        
+        This factory method must be implemented by all concrete adapter implementations
+        to register their supported payment methods (both collection and disbursement).
+        The registration ensures that payment methods are available through the unified
+        AdapterHub interface and follow consistent patterns across different blockchains.
+        
+        Implementation should:
+        1. Register all supported payment methods for the blockchain
+        2. Include both server-side (receiving) and client-side (sending) methods
+        3. Store registered payment components in the class variable `payment_component`
+        4. Handle any blockchain-specific configuration or initialization
+        
+        The registered methods should be accessible through:
+            - AdapterHub.get_payment_methods()
+            - PaymentRegistry.get_support_list()
+            - The class variable `payment_component` (List[BasePaymentComponent])
+        
+        Note:
+            This method is typically called during adapter initialization or
+            when the AdapterHub is being set up. It should not be called
+            directly by application code in most cases.
+            Implementations should populate the `payment_component` list with
+            registered payment components for easy access and management.
+        
+        Raises:
+            RuntimeError: If registration fails due to configuration issues
+            ValueError: If payment method parameters are invalid
+        
+        Example (EVM implementation):
+            def payment_method_register(self) -> None:
+                # Register USDC on Ethereum mainnet
+                usdc_component = EVMPaymentComponent(
+                    payment_type='evm',
+                    amount=100.0,
+                    token='0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+                    currency='USD',
+                    chain_id=1,
+                    metadata={...}
+                )
+                self.payment_component.append(usdc_component)
+                
+                # Register DAI on Polygon
+                dai_component = EVMPaymentComponent(
+                    payment_type='evm',
+                    amount=50.0,
+                    token='0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063',
+                    currency='DAI',
+                    chain_id=137,
+                    metadata={...}
+                )
+                self.payment_component.append(dai_component)
+        """
+        pass

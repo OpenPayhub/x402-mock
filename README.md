@@ -143,6 +143,7 @@ Recommended testnets: Sepolia (Ethereum), Mumbai (Polygon). Use faucets for test
 ```python
 # Server minimal example
 from x402_mock.servers import Http402Server, create_private_key
+from x402_mock.adapters.evm.schemas import EVMPaymentComponent
 
 token_key = create_private_key()  # server signing private key for issuing/verifying access tokens (not on-chain wallet key)
 
@@ -152,9 +153,12 @@ app = Http402Server(
 )
 
 app.add_payment_method(
-    chain_id="eip155:11155111",
-    amount=0.5,
-    currency="USDC",
+    EVMPaymentComponent(
+        amount=0.5,
+        currency="USDC",
+        caip2="eip155:11155111",
+        token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+    )
 )
 
 @app.get("/api/protected-data")
@@ -173,17 +177,21 @@ if __name__ == "__main__":
 ```python
 from x402_mock.clients.http_client import Http402Client
 from x402_mock.adapters.adapters_hub import AdapterHub
+from x402_mock.adapters.evm.schemas import EVMPaymentComponent
 
 wpk = "your eoa private key"
 ah = AdapterHub(wpk)
 
 async with Http402Client() as client:
   client.add_payment_method(
-    chain_id="eip155:11155111",
-    amount=0.8,
-    currency="USDC",
+          EVMPaymentComponent(
+              caip2="eip155:11155111",
+              amount=0.8,
+              currency="USDC",
+              token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+          )
   )
-  await ah.initialize(client_role=True)  # initialize adapters for client role (pre-signing)
+
   response = client.get("http://localhost:8000/api/protected-data")
 ```
 
@@ -200,12 +208,12 @@ Examples: [example/](example/)
 - ✅ Generic ERC20: Permit2 offline signature & verification
 - ✅ On-chain USDC transfer with tx_hash available
 - ✅ Asynchronous on-chain settlement
+- ✅ Coverage of EVM chains, theoretically supporting signatures for all tokens (Ethereum, Polygon, Arbitrum, Optimism, etc.)
 
 ---
 
 ## Roadmap
 
-- [ ] Cover more EVM chains (Ethereum, Polygon, Arbitrum, Optimism, etc.)
 - [ ] Support smart contract wallet recipients
 - [ ] Support EIP-6492 (undeployed contract signature verification)
 - [ ] Support SVM (Solana Virtual Machine) and Solana ecosystem

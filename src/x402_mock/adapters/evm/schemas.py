@@ -1,4 +1,4 @@
-"""
+﻿"""
 EVM Adapter Schema Models
 
 Pydantic models for EVM permit and settlement operations.  All classes
@@ -29,7 +29,7 @@ Supporting classes:
 
 from typing import Optional, Dict, Any, Literal
 
-from pydantic import Field
+from pydantic import Field, ConfigDict
 
 from ...schemas.bases import (
     BaseSignature,
@@ -201,7 +201,7 @@ class EVMPaymentComponent(BasePaymentComponent):
     EVM-Specific Payment Component.
     
     Extends BasePaymentComponent with EVM-specific payment requirements including
-    token contract address and chain ID.
+    token contract address, chain identifier (CAIP-2), and an optional recipient address.
     Typically used for USDC payments on EVM networks (Ethereum, Sepolia, etc.).
     
     Attributes:
@@ -211,7 +211,12 @@ class EVMPaymentComponent(BasePaymentComponent):
         metadata: Additional payment metadata (may include gas limits, fees, etc.)
         created_at: Timestamp when payment component was created
         token: Token contract address on specific EVM chain (EVM-specific)
-        chain_id: EVM network ID (1=Ethereum, 11155111=Sepolia, etc.) (EVM-specific)
+        caip2: CAIP-2 chain identifier (e.g., "eip155:1", "eip155:11155111") (EVM-specific)
+        pay_to: Optional recipient address to pay to (EVM-specific)
+        rpc_url: Optional EVM RPC URL for this payment (EVM-specific)
+        token_name: Optional token name (e.g., "USDC") (EVM-specific)
+        token_decimals: Optional token decimals (string or int) (EVM-specific)
+        token_version: Optional token version (string or int) (EVM-specific)
     
     Example:
         payment = EVMPaymentComponent(
@@ -219,14 +224,20 @@ class EVMPaymentComponent(BasePaymentComponent):
             amount=1.0,  # 1 USDC
             currency="USD",
             token="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-            chain_id=11155111,
+            caip2="eip155:11155111",
             metadata={"gas_price": "20", "priority_fee": "2"}
         )
     """
+    model_config = ConfigDict(validate_assignment=True)
     
     payment_type: Literal["evm"] = Field(default="evm", description="Payment type identifier")
-    token: str = Field(..., description="Token contract address on EVM chain")
-    chain_id: int = Field(..., ge=1, description="EVM network ID")
+    caip2: str = Field(..., description='CAIP-2 chain identifier (e.g., "eip155:1")')
+    pay_to: str | None = Field(default=None, description="Optional recipient address to pay to")
+    token: str | None = Field(default=None, description="Token contract address on EVM chain")
+    rpc_url: str| None = Field(default="", description="Optional RPC URL for chain access", exclude=True)
+    token_name: str | None = Field(default=None, description="Optional token name (e.g., 'USDC')")
+    token_decimals: str | int | None = Field(default=None, description="Optional token decimals (string or int)")
+    token_version: str | int | None = Field(default=None, description="Optional token version (string or int)")
 
     def validate_payment(self) -> bool:
         """
@@ -236,7 +247,8 @@ class EVMPaymentComponent(BasePaymentComponent):
         - payment_type is "evm" 
         - amount is non-negative
         - token is valid EVM address format (0x...)
-        - chain_id is valid EVM network
+        - caip2 is a valid CAIP-2 identifier for EVM chains (eip155:<chain_id>)
+        - pay_to is either None or a valid EVM address format (0x...)
         
         Returns:
             bool: True if payment specification is valid
@@ -245,21 +257,73 @@ class EVMPaymentComponent(BasePaymentComponent):
             ValueError: With descriptive message if validation fails
         """
         # Validate token address format
-        if not self.token.startswith("0x"):
-            raise ValueError("Token must be valid EVM address starting with 0x")
-        
-        if len(self.token) != 42:
-            raise ValueError("Token address must be 42 characters long")
+        if self.token is not None:
+            if not self.token.startswith("0x"):
+                raise ValueError("Token must be valid EVM address starting with 0x")
+            
+            if len(self.token) != 42:
+                raise ValueError("Token address must be 42 characters long")
+
+        # Validate optional recipient address format
+        if self.pay_to is not None:
+            if not self.pay_to.startswith("0x"):
+                raise ValueError("pay_to must be a valid EVM address starting with 0x")
+            if len(self.pay_to) != 42:
+                raise ValueError("pay_to address must be 42 characters long")
         
         # Validate payment type
         if self.payment_type.lower() != "evm":
             raise ValueError(f"Unsupported payment type: {self.payment_type}")
         
-        # Validate chain_id
-        if self.chain_id < 1:
-            raise ValueError("chain_id must be positive")
+        # Validate CAIP-2 identifier
+        self._validate_caip2_format()
         
         return True
+    
+    def _validate_caip2_format(self) -> None:
+        """
+        Validate CAIP-2 identifier format.
+        
+        Accepts both 'eip155:1' and 'eip155-1' formats (case-insensitive).
+        Validates that:
+        1. The identifier starts with 'eip155' (case-insensitive)
+        2. Has a valid separator (':' or '-')
+        3. Has a valid chain ID (positive integer)
+        
+        Raises:
+            ValueError: If CAIP-2 format is invalid
+        """
+        if not self.caip2:
+            raise ValueError("CAIP-2 identifier cannot be empty")
+        
+        # Convert to lowercase for case-insensitive comparison
+        caip2_lower = self.caip2.lower()
+        
+        # Check if it starts with 'eip155'
+        if not caip2_lower.startswith('eip155'):
+            raise ValueError(f"Invalid CAIP-2 identifier: must start with 'eip155', got '{self.caip2}'")
+        
+        # Find the separator position
+        separator_pos = len('eip155')
+        if separator_pos >= len(caip2_lower):
+            raise ValueError(f"Invalid CAIP-2 identifier: missing separator and chain ID, got '{self.caip2}'")
+        
+        separator = caip2_lower[separator_pos]
+        if separator not in [':', '-']:
+            raise ValueError(f"Invalid CAIP-2 identifier: separator must be ':' or '-', got '{separator}' in '{self.caip2}'")
+        
+        # Extract chain ID part
+        chain_id_str = caip2_lower[separator_pos + 1:]
+        if not chain_id_str:
+            raise ValueError(f"Invalid CAIP-2 identifier: missing chain ID, got '{self.caip2}'")
+        
+        # Validate chain ID is a positive integer
+        try:
+            chain_id = int(chain_id_str)
+            if chain_id <= 0:
+                raise ValueError(f"Invalid CAIP-2 identifier: chain ID must be positive integer, got '{chain_id_str}' in '{self.caip2}'")
+        except ValueError:
+            raise ValueError(f"Invalid CAIP-2 identifier: chain ID must be a valid integer, got '{chain_id_str}' in '{self.caip2}'")
 
 
 class EVMVerificationResult(BaseVerificationResult):

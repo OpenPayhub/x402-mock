@@ -23,7 +23,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install mkdocs mkdocs-material mkdocstrings[python] mkdocs-static-i18n
+          pip install "mkdocs<2.0" "mkdocs-material<10" mkdocstrings[python] mkdocs-static-i18n
       
       - name: Deploy docs
         run: mkdocs gh-deploy --force

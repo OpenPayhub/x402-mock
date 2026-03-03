@@ -83,6 +83,6 @@ This design achieves **separation of responsibilities**, decoupling payment logi
 
 - Check [Quick Start](quick_start.md) for quick deployment
 - Check [API Reference](reference.md) for detailed documentation
-- Extended reading [Which Protocols Does x402 Use?](erc_eip_docs.md) to learn more about related knowledge
+- Extended reading [Which Protocols Does x402 Use?](evm_docs.md) to learn more about related knowledge
 - Visit the GitHub repository for full content: https://github.com/OpenPayhub/x402-mock
 - ⚠️ Test on testnet (e.g., Sepolia) before production use

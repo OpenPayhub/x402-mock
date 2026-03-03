@@ -39,7 +39,6 @@ plugins:
             docstring_style: google
             group_by_category: False
             show_signature_annotations: true
-            import_outline: false
             heading_level: 2
 
 nav:

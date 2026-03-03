@@ -22,10 +22,8 @@ plugins:
         - locale: en
           default: true
           name: English
-          build: true
         - locale: zh
           name: 简体中文
-          build: true
   - mkdocstrings:
       handlers:
         python:

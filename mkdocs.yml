@@ -10,26 +10,58 @@ theme:
     - scheme: default
       primary: indigo
       accent: indigo
+  icon:
+    alternate: material/translate
 
 plugins:
   - search
+  - i18n:
+      docs_structure: suffix
+      fallback_to_default: true
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: zh
+          name: 简体中文
+          build: true
   - mkdocstrings:
       handlers:
         python:
           paths: [src]
           options:
             show_root_heading: true
+            show_root_toc_entry: true
+            show_root_full_path: false
             show_source: false
+            show_category_heading: False
             members_order: source
             show_if_no_docstring: false
             docstring_style: google
+            group_by_category: False
             show_signature_annotations: true
+            import_outline: false
+            heading_level: 2
 
 nav:
   - Home: index.md
+  - Quick Start: quick_start.md
   - API Reference: reference.md
+  - Relatived Docs: evm_docs.md
+
+extra:
+  alternate:
+    - name: English
+      lang: en
+      link: /
+    - name: 简体中文
+      lang: zh
+      link: /zh/
 
 markdown_extensions:
+  - toc:
+      toc_depth: 3
   - pymdownx.highlight
   - pymdownx.superfences
   - admonition

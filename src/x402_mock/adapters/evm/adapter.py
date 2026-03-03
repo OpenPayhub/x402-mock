@@ -95,8 +95,8 @@ class EVMAdapter(AdapterFactory):
     
     Attributes:
         account: Server's account object (initialized from evm_private_key environment variable)
-        address: Checksum-formatted server account address
-        _infra_key: Optional infrastructure API key for premium RPC endpoints
+        wallet_address: Checksum-formatted server account address (not 'address' as previously documented)
+        _infra_key: Optional infrastructure API key for premium RPC endpoints (note: this attribute is not defined in the class)
     
     Environment Variables:
         - evm_private_key: Server's EVM private key for signing transactions (required)
@@ -105,10 +105,10 @@ class EVMAdapter(AdapterFactory):
     
     Example:
         # Initialize with environment variables
-        adapter = EVMServerAdapter()  # Loads evm_private_key automatically
+        adapter = EVMAdapter()  # Loads evm_private_key automatically (correct class name is EVMAdapter, not EVMServerAdapter)
         
         # Or explicitly provide private key (for testing)
-        adapter = EVMServerAdapter(private_key="0x...")
+        adapter = EVMAdapter(private_key="0x...")
         
         # Verify permit signature and on-chain state
         result = await adapter.verify_signature(permit, payment_requirement)
@@ -308,14 +308,14 @@ class EVMAdapter(AdapterFactory):
         -----------------
         ``payment_requirement.amount`` is a human-readable USDC quantity
         (e.g. ``1.5`` for 1.5 USDC).  It is converted to the smallest token
-        unit via :func:`amount_to_value` using ``payment_requirement.metadata
-        ["decimals"]`` (defaults to ``6`` for USDC).
+        unit via :func:`amount_to_value` using ``payment_requirement.token_decimals``
+        (defaults to ``6`` for USDC).
 
         Args:
             permit: ERC3009Authorization or Permit2Signature produced by
                 :meth:`signature`.
             payment_requirement: EVMPaymentComponent describing the expected
-                payment (human-readable ``amount``, ``decimals`` in metadata).
+                payment (human-readable ``amount``, ``token_decimals`` field).
 
         Returns:
             EVMVerificationResult with ``is_valid=True`` and
@@ -626,7 +626,9 @@ class EVMAdapter(AdapterFactory):
             web3:   Configured :class:`AsyncWeb3` instance for the target chain.
 
         Returns:
-            ``{"raw_transaction": bytes}`` on success or ``{"error": str}``.
+            A dictionary with either:
+            - ``{"raw_transaction": bytes}`` on success (signed transaction bytes)
+            - ``{"error": str}`` on failure (error message string)
         """
         try:
             token_address = AsyncWeb3.to_checksum_address(permit.token)
@@ -691,7 +693,9 @@ class EVMAdapter(AdapterFactory):
             web3:   Configured :class:`AsyncWeb3` instance for the target chain.
 
         Returns:
-            ``{"raw_transaction": bytes}`` on success or ``{"error": str}``.
+            A dictionary with either:
+            - ``{"raw_transaction": bytes}`` on success (signed transaction bytes)
+            - ``{"error": str}`` on failure (error message string)
         """
         try:
             permit2_address = AsyncWeb3.to_checksum_address(permit.permit2_address)
@@ -833,12 +837,23 @@ class EVMAdapter(AdapterFactory):
         token_addr: str,
         values: int,
     ) -> Tuple[str, Optional[TxReceipt]]:
-        """Asynchronously signs and broadcasts an ERC20 approve transaction.
+        """
+        Asynchronously signs and broadcasts an ERC20 approve transaction for Permit2.
+
+        This method approves the Permit2 singleton contract to spend tokens on behalf
+        of the server wallet. The approval amount is typically set to ``_MAX_UINT256``
+        (infinite approval) to avoid repeated approval transactions.
 
         Args:
-            chain_id (int): The EVM chain ID (e.g., 1 for Ethereum, 11155111 for Sepolia).
-            token_addr (str): The contract address of the ERC20 token.
-            values (int): The raw amount (in wei) to approve.
+            chain_id: The EVM chain ID (e.g., 1 for Ethereum, 11155111 for Sepolia).
+            token_addr: The contract address of the ERC20 token.
+            values: The raw amount (in smallest token units) to approve.
+
+        Returns:
+            A tuple containing:
+            - transaction hash (str) as 0x-prefixed hex string
+            - transaction receipt (Optional[TxReceipt]) if the transaction was mined,
+              or None if the transaction is still pending or failed
         """
         
         w3 = self._get_web3_instance(EVMRegistry.get_rpc_url_by_caip2(f"eip155:{chain_id}"))

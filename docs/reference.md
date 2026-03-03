@@ -76,6 +76,85 @@ Uses the Adapter pattern combined with Factory pattern to provide a consistent A
 
 ::: x402_mock.adapters
 
+## EVM
+
+**Ethereum Virtual Machine (EVM) Blockchain Adapter**
+
+The EVM module provides a specialized adapter implementation for EVM-compatible blockchains. It includes a complete toolkit for handling on-chain payment authorizations, signature verification, transaction settlement, and chain configuration management.
+
+**Key Features:**
+- **ERC-3009 Support**: Offline `transferWithAuthorization` signing for USDC and other compatible tokens
+- **Permit2 Support**: Offline `permitTransferFrom` authorization for generic ERC-20 tokens
+- **Multi-Chain Configuration**: Unified chain configuration and asset information management
+- **Smart Contract Interaction**: Complete ABI definitions for ERC-20, ERC-3009, and Permit2
+- **Signature Verification**: Both on-chain and off-chain signature verification mechanisms
+- **Configuration Utilities**: Tools to fetch chain info and token lists from external sources
+
+**Main Components:**
+- `EVMAdapter`: Main EVM blockchain adapter class
+- `EVMRegistry`: EVM payment method registry
+- `EVMECDSASignature`, `EVMTokenPermit`, `ERC3009Authorization`, `Permit2Signature`: Signature and authorization data structures
+- `EVMVerificationResult`, `EVMTransactionConfirmation`: Verification and transaction result models
+
+**Configuration Utilities:**
+
+**EvmPublicRpcFromChainList**
+
+Fetches public RPC endpoints in real-time from [Chainlist.org](https://chainlist.org). Supports filtering by protocol (`https` / `wss`) and privacy level (`none` / `limited`), making it easy to find a usable, API-Key-free RPC for any EVM chain.
+
+```python
+from x402_mock.adapters.evm import EvmPublicRpcFromChainList
+
+rpc = EvmPublicRpcFromChainList()
+
+# Get any available public HTTPS RPC
+print(rpc.pick_public_rpc("eip155:1"))
+
+# Only nodes with no privacy tracking
+print(rpc.pick_public_rpc("eip155:8453", tracking_type="none"))
+```
+
+**EvmTokenListFromUniswap**
+
+Queries any token's contract address and decimals from the [Uniswap official token list](https://tokens.uniswap.org). Results are automatically cached to avoid redundant network requests.
+
+```python
+from x402_mock.adapters.evm import EvmTokenListFromUniswap
+
+tokens = EvmTokenListFromUniswap()
+
+# Look up USDC contract address and decimals on Ethereum mainnet
+address, decimals = tokens.get_token_address_and_decimals("eip155:1", "USDC")
+print(address, decimals)
+```
+
+**EvmChainInfoFromEthereumLists**
+
+Fetches authoritative chain metadata from the [ethereum-lists](https://github.com/ethereum-lists/chains) repository. **Primarily used to resolve Infura / Alchemy RPC templates with API Key placeholders**, and to enumerate public RPC endpoints that require no key.
+
+```python
+from x402_mock.adapters.evm import EvmChainInfoFromEthereumLists
+
+chain = EvmChainInfoFromEthereumLists()
+
+# Get Infura / Alchemy RPC templates (with {API_KEY} placeholder)
+print(chain.get_infura_rpc_url("eip155:1"))
+print(chain.get_alchemy_rpc_url("eip155:1"))
+
+# List all public endpoints requiring no API Key
+print(chain.get_public_rpc_urls("eip155:137"))
+```
+
+**Other Utility Functions:**
+
+- `get_private_key_from_env()`: Load the EVM server private key from environment variables
+- `get_rpc_key_from_env()`: Load the EVM infrastructure API key from environment variables
+- `amount_to_value()` / `value_to_amount()`: Convert between human-readable token amounts and on-chain smallest units
+- `parse_caip2_eip155_chain_id()`: Parse a CAIP-2 identifier into an integer chain ID
+- `fetch_erc20_name_version_decimals()`: Read token name, version, and decimals from on-chain RPC
+
+::: x402_mock.adapters.evm
+
 ## Schemas
 
 **Base Schema Models and Type System**

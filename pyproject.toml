@@ -14,7 +14,7 @@ authors = [
 description = "A plug-and-play SDK for HTTP 402 on-chain payment workflows, supporting USDC/ERC20 offline signing, EVM chains, and AI Agent integration."
 readme = "docs/quick_start.md"
 license = "Apache-2.0"
-keywords = ["http-402", "payment", "web3", "usdc", "erc20", "fastapi", "python", "x402]
+keywords = ["http-402", "payment", "web3", "usdc", "erc20", "fastapi", "python", "x402"]
 
 requires-python = ">=3.11"
 dependencies = [

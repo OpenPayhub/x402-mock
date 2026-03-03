@@ -1,0 +1,510 @@
+# Quick Start
+
+x402-mock is an implementation of a payment protocol based on HTTP 402 status code, supporting token payments on EVM blockchains. This guide will help you get started quickly.
+
+## Installation
+
+This project uses `uv` as the package manager.
+
+```bash
+uv add x402-mock
+uv sync
+```
+
+### Environment Configuration
+
+Create a `.env` file in the project root directory to configure your private key and RPC service keys:
+
+```env
+# Required: EVM private key (for signing and receiving payments)
+EVM_PRIVATE_KEY=your_private_key_here
+
+# Optional: API keys for Infura or Alchemy (for accessing blockchain networks)
+EVM_INFURA_KEY=your_infura_key_here
+EVM_ALCHEMY_KEY=your_alchemy_key_here
+```
+
+## Core Concepts
+
+### Payment Flow Overview
+
+x402-mock implements a payment flow with separation of responsibilities, similar to a cinema's ticketing system:
+
+1. **Server (Payment Receiver)**: Provides services and accepts payments, similar to a cinema
+2. **Client (Payment Payer)**: Requests services and completes payments, similar to an audience member
+3. **Payment Process**:
+   - Client requests a protected resource
+   - Server verifies the Client's access token (similar to ticket checking)
+   - If the token is invalid, returns 402 status code + payment information (similar to directing to ticket office)
+   - Client completes signed payment based on payment information (similar to buying a ticket)
+   - Client obtains access token and retries the resource request (similar to entering with ticket)
+
+### Separation of Responsibilities with Status Code 402
+
+The HTTP 402 "Payment Required" status code implements separation of responsibilities in this project:
+- **Server side**: Only responsible for verifying the validity of access tokens, not handling payment logic
+- **Payment verification**: Handled by an independent `/token` endpoint, receiving payment signatures and issuing access tokens
+- **Client side**: Automatically handles 402 responses, completes payment flow and retries requests
+
+This design decouples payment logic from business logic, improving system maintainability and security.
+
+## Server (Payment Receiver)
+
+Server is the party that provides services and accepts payments. Main responsibilities include:
+1. Defining accepted payment methods (chain, network, token)
+2. Verifying the authenticity and validity of payment signatures
+3. Completing on-chain transfer settlement
+4. Issuing access tokens
+
+### Creating a Server Instance
+
+```python
+from x402_mock.servers import Http402Server, create_private_key
+from x402_mock.adapters.evm.schemas import EVMPaymentComponent
+
+# Generate access token signing key
+token_key = create_private_key()
+
+# Create Server instance (inherits from FastAPI)
+app = Http402Server(
+    token_key=token_key,      # Access token signing key
+    token_expires_in=300      # Token validity period (seconds)
+)
+```
+
+#### Http402Server Parameter Description
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `token_key` | str | Yes | Access token signing key, can be generated using `create_private_key()` |
+| `token_expires_in` | int | No | Access token validity period (seconds), default 3600 |
+| `enable_auto_settlement` | bool | No | Whether to automatically settle payments, default True |
+| `token_endpoint` | str | No | Token exchange endpoint path, default "/token" |
+
+### Adding Payment Methods
+
+```python
+# Add EVM payment method
+app.add_payment_method(
+    EVMPaymentComponent(
+        amount=0.5,          # Payment amount (human-readable units)
+        currency="USDC",     # Token symbol
+        caip2="eip155:11155111",  # CAIP-2 chain identifier
+        token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"  # Token contract address
+    )
+)
+```
+
+#### EVMPaymentComponent Parameter Description
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `amount` | float | Yes | Payment amount (human-readable units, e.g., 0.5 USDC) |
+| `currency` | str | Yes | Token symbol (e.g., "USDC", "USDT", "ETH") |
+| `caip2` | str | Yes | CAIP-2 chain identifier (format: `eip155:<chain_id>`) |
+| `token` | str | Recommended | Token contract address (0x prefix, 42 characters) |
+| `pay_to` | str | No | Payment receiving address, defaults to address corresponding to environment variable private key |
+| `rpc_url` | str | No | RPC node URL, defaults to public nodes or automatically configured based on environment variables |
+| `token_name` | str | No | Token name, can be omitted if automatically retrieved |
+| `token_decimals` | int/str | No | Token decimals, can be omitted if automatically retrieved |
+| `token_version` | int/str | No | Token version, can be omitted if automatically retrieved |
+
+**Note**: If `token`, `token_name`, `token_decimals`, `token_version` are not provided, the system will automatically query them based on `caip2` and `currency`.
+
+### Protecting API Endpoints
+
+Use the `@app.payment_required` decorator to protect endpoints that require payment:
+
+```python
+@app.get("/api/protected-data")
+@app.payment_required
+async def get_protected_data(payload):
+    """Endpoint that requires payment to access"""
+    return {
+        "message": "Payment verified successfully",
+        "user_address": payload["address"]
+    }
+```
+
+### Event Handling
+
+Server provides an event system where you can listen to various events during the payment process:
+
+```python
+from x402_mock.engine.events import SettleSuccessEvent
+
+@app.hook(SettleSuccessEvent)
+async def on_settle_success(event, deps):
+    """Processing logic when payment succeeds"""
+    print(f"✅ Payment succeeded: {event.settlement_result}")
+    # You can log, send notifications, etc. here
+```
+
+Available event types:
+- `RequestInitEvent`: Request initialization
+- `RequestTokenEvent`: Token request
+- `TokenIssuedEvent`: Token issued
+- `VerifyFailedEvent`: Verification failed
+- `AuthorizationSuccessEvent`: Authorization succeeded
+- `Http402PaymentEvent`: Payment required
+- `SettleSuccessEvent`: Settlement succeeded
+
+## Client (Payment Payer)
+
+Client is the party that requests services and completes payments. Main responsibilities include:
+1. Registering supported payment methods
+2. Automatically handling 402 responses
+3. Generating payment signatures
+4. Exchanging signatures for access tokens
+
+### Creating a Client Instance
+
+```python
+from x402_mock.clients.http_client import Http402Client
+from x402_mock.adapters.evm.schemas import EVMPaymentComponent
+
+async with Http402Client() as client:
+    # Register payment method
+    client.add_payment_method(
+        EVMPaymentComponent(
+            caip2="eip155:11155111",
+            amount=0.8,          # Maximum payment amount limit
+            currency="USDC",
+            token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+        )
+    )
+    
+    # Send request (automatically handles 402 payment flow)
+    response = await client.get("http://localhost:8000/api/protected-data")
+    print(response.json())
+```
+
+#### Special Notes on Client-side EVMPaymentComponent
+
+On the Client side, the `amount` parameter represents the **maximum payment amount limit**. If the Server requests an amount exceeding this limit, the Client will refuse to sign the payment.
+
+### Payment Flow Automation
+
+`Http402Client` inherits from `httpx.AsyncClient` and is fully compatible with all its methods. When receiving a 402 response, the Client automatically:
+
+1. Parses payment requirements
+2. Matches registered payment methods
+3. Generates payment signature
+4. Exchanges for access token at `/token` endpoint
+5. Retries original request with new token
+
+The entire process is transparent to developers; you just need to use the HTTP client normally.
+
+## Complete Examples
+
+### Complete Server-side Example
+
+```python
+from x402_mock.servers import Http402Server, create_private_key
+from x402_mock.adapters.evm.schemas import EVMPaymentComponent
+from x402_mock.engine.events import SettleSuccessEvent
+
+# Create Server
+token_key = create_private_key()
+app = Http402Server(token_key=token_key, token_expires_in=300)
+
+# Add payment method
+app.add_payment_method(
+    EVMPaymentComponent(
+        amount=0.5,
+        currency="USDC",
+        caip2="eip155:11155111",
+        token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+    )
+)
+
+# Payment success event handling
+@app.hook(SettleSuccessEvent)
+async def log_payment_success(event, deps):
+    print(f"💰 Payment received: {event.settlement_result.authorized_amount} USDC")
+
+# Protected API endpoint
+@app.get("/api/premium-content")
+@app.payment_required
+async def get_premium_content(payload):
+    return {
+        "content": "This is premium content",
+        "paid_by": payload["address"],
+        "timestamp": payload.get("timestamp")
+    }
+
+# Run Server (using uvicorn)
+# uvicorn server:app --host 0.0.0.0 --port 8000
+```
+
+### Complete Client-side Example
+
+```python
+import asyncio
+from x402_mock.clients.http_client import Http402Client
+from x402_mock.adapters.evm.schemas import EVMPaymentComponent
+
+async def main():
+    async with Http402Client() as client:
+        # Register payment method (supports multiple)
+        client.add_payment_method(
+            EVMPaymentComponent(
+                caip2="eip155:11155111",
+                amount=1.0,      # Pay up to 1.0 USDC
+                currency="USDC",
+                token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+            )
+        )
+        
+        # Request protected content (automatically handles payment)
+        response = await client.get("http://localhost:8000/api/premium-content")
+        
+        if response.status_code == 200:
+            data = response.json()
+            print(f"✅ Content obtained: {data['content']}")
+            print(f"   Payer: {data['paid_by']}")
+        else:
+            print(f"❌ Request failed: {response.status_code}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+## Advanced Configuration
+
+### Custom RPC Nodes
+
+```python
+# Server-side specify RPC node
+app.add_payment_method(
+    EVMPaymentComponent(
+        amount=0.5,
+        currency="USDC",
+        caip2="eip155:1",  # Ethereum mainnet
+        token="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",  # USDC
+        rpc_url="https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY"
+    )
+)
+```
+
+### Multi-Chain Support
+
+```python
+# Support payment methods for multiple chains
+app.add_payment_method(
+    EVMPaymentComponent(
+        amount=0.1,
+        currency="ETH",
+        caip2="eip155:1",  # Ethereum mainnet
+        token=None  # Use native token
+    )
+)
+
+app.add_payment_method(
+    EVMPaymentComponent(
+        amount=1.0,
+        currency="USDC",
+        caip2="eip155:42161",  # Arbitrum
+        token="0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"
+    )
+)
+```
+
+## On-chain Information Retrieval Tools
+
+When configuring payment methods, you may need to obtain various on-chain information such as RPC node addresses, token contract addresses, token decimals, and versions. x402-mock provides a series of utility methods to simplify retrieving this information.
+
+### Import Utility Methods
+
+```python
+from x402_mock.adapters.evm.constants import (
+    EvmChainInfoFromEthereumLists,
+    EvmPublicRpcFromChainList,
+    EvmTokenListFromUniswap,
+    fetch_erc20_name_version_decimals,
+    get_rpc_key_from_env
+)
+```
+
+### Method Description
+
+#### 1. `EvmChainInfoFromEthereumLists`
+**Function**: Retrieve detailed EVM chain configuration information from the ethereum-lists repository.
+
+**Main uses**:
+- Get chain's Infura/Alchemy RPC URLs (with API key placeholders)
+- Get public RPC node lists
+- Get basic chain information (name, explorer addresses, etc.)
+
+**Example usage**:
+```python
+chain_info = EvmChainInfoFromEthereumLists()
+
+# Get Infura RPC URL (needs API key filled)
+infura_url = chain_info.get_infura_rpc_url("eip155:1")
+# Returns something like: https://mainnet.infura.io/v3/{RPC_KEYS}
+
+# Get Alchemy RPC URL (needs API key filled)
+alchemy_url = chain_info.get_alchemy_rpc_url("eip155:1")
+# Returns something like: https://eth-mainnet.g.alchemy.com/v2/{RPC_KEYS}
+
+# Get public RPC node list
+public_rpcs = chain_info.get_public_rpc_urls("eip155:1")
+# Returns: ["https://api.mycryptoapi.com/eth", ...]
+```
+
+#### 2. `EvmPublicRpcFromChainList`
+**Function**: Retrieve public RPC node information from Chainlist.org.
+
+**Main uses**:
+- Get public RPC nodes with no tracking or limited tracking
+- Select RPC nodes based on privacy preferences
+- Support HTTPS and WebSocket protocols
+
+**Example usage**:
+```python
+rpc_finder = EvmPublicRpcFromChainList()
+
+# Get public RPC node with no tracking
+public_rpc = rpc_finder.pick_public_rpc(
+    caip2="eip155:1",
+    start_with="https://",
+    tracking_type="none"
+)
+# Returns something like: https://rpc.ankr.com/eth
+
+# Get all public RPC information for a specific chain
+chain_rpcs = rpc_finder.get_specific_chain_public_rpcs("eip155:1")
+```
+
+#### 3. `EvmTokenListFromUniswap`
+**Function**: Retrieve token information from Uniswap's official token list.
+
+**Main uses**:
+- Get token contract addresses and decimals
+- Support multi-chain token queries
+- Automatic data caching to reduce network requests
+
+**Example usage**:
+```python
+token_finder = EvmTokenListFromUniswap()
+
+# Get token address and decimals
+address, decimals = token_finder.get_token_address_and_decimals(
+    caip2="eip155:1",
+    symbol="USDC"
+)
+# Returns: ("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", 6)
+```
+
+#### 4. `fetch_erc20_name_version_decimals`
+**Function**: Query token details directly from chain RPC.
+
+**Main uses**:
+- Query token's `name()`, `version()` and `decimals()` functions
+- Verify complete token contract information
+- Get latest on-chain data
+
+**Example usage**:
+```python
+# Query token information from chain
+name, version, decimals = fetch_erc20_name_version_decimals(
+    rpc_url="https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY",
+    token_address="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+)
+# Returns: ("USD Coin", "2", 6)
+```
+
+#### 5. `get_rpc_key_from_env`
+**Function**: Get RPC service provider API keys from environment variables.
+
+**Main uses**:
+- Securely get Infura or Alchemy API keys
+- Support custom environment variable names
+- Returns `None` to indicate using public nodes
+
+**Example usage**:
+```python
+# Get Infura key (default)
+infura_key = get_rpc_key_from_env("EVM_INFURA_KEY")
+
+# Get Alchemy key
+alchemy_key = get_rpc_key_from_env("EVM_ALCHEMY_KEY")
+
+# Build RPC URL using key
+if infura_key:
+    rpc_url = f"https://mainnet.infura.io/v3/{infura_key}"
+else:
+    # Use public node
+    rpc_finder = EvmPublicRpcFromChainList()
+    rpc_url = rpc_finder.pick_public_rpc("eip155:1")
+```
+
+### Auto-filling Payment Components
+
+These utility methods are typically used internally by `EVMPaymentComponent` to automatically fill in missing information:
+
+```python
+# Only provide basic information, system automatically queries missing data
+payment = EVMPaymentComponent(
+    amount=0.5,
+    currency="USDC",
+    caip2="eip155:1"
+    # token, token_name, token_decimals, token_version are automatically queried
+)
+
+# System internally will:
+# 1. Use EvmTokenListFromUniswap to get USDC contract address and decimals
+# 2. Use fetch_erc20_name_version_decimals to get token name and version
+# 3. Use EvmPublicRpcFromChainList to get public RPC node
+# 4. Use get_rpc_key_from_env to check if there are private RPC keys
+```
+
+### Best Practices
+
+1. **Production environment**: Recommend providing complete `token`, `rpc_url`, etc. information to reduce network queries
+2. **Development environment**: Can rely on automatic queries to simplify configuration
+3. **Performance considerations**: Initial queries make network requests, subsequent uses cache
+4. **Error handling**: When network is unavailable, automatically falls back to built-in default configurations
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Payment fails after 402 response**
+   - Check if private key configuration is correct
+   - Confirm sufficient token balance
+   - Verify chain ID and token address match
+
+2. **Token verification fails**
+   - Check if `token_key` is consistent
+   - Confirm token hasn't expired
+   - Verify signature algorithm
+
+3. **RPC connection issues**
+   - Check network connection
+   - Confirm RPC URL is valid
+   - Consider using backup nodes
+
+### Debug Mode
+
+Enable detailed logging:
+
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG)
+```
+
+## Next Steps
+
+- View [API Reference Documentation](./reference.md) for detailed interface specifications
+- Explore [Example Code](../example/)
+- Understand [Event System](./reference.md#Engine) to implement custom business logic
+
+---
+
+**Tips**: In production environments, please ensure:
+1. Use secure key management solutions
+2. Configure appropriate timeout and retry strategies
+3. Monitor payment success rate and failure reasons
+4. Regularly update dependencies to get security fixes

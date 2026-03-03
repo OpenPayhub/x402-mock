@@ -3,6 +3,9 @@ HTTP 402 Payment Flow Middleware
 
 Provides a transparent middleware layer for httpx that automatically handles
 402 Payment Required responses with permit signing and token exchange.
+
+Note: The imported `ProtocalVersion` class has a typo in its name (should be
+`ProtocolVersion`), but this is kept as-is for backward compatibility.
 """
 
 from typing import Dict, Optional, Union, Any
@@ -38,7 +41,13 @@ class Http402Client(httpx.AsyncClient):
     Usage:
         ```python
         async with Http402Client() as client:
-            client.add_payment_method("eip155:11155111", 100.0, "USDC")
+            # Register a payment method (PaymentComponentTypes or dict)
+            payment_component = {
+                "payment_type": "eip155:11155111",
+                "amount": 100.0,
+                "token": "USDC"
+            }
+            client.add_payment_method(payment_component)
             response = await client.get("https://api.example.com/data")
         ```
     """
@@ -53,7 +62,6 @@ class Http402Client(httpx.AsyncClient):
         
         Args:
             adapter_hub: Optional AdapterHub for payment handling
-            token: Optional initial authorization token
             **kwargs: All standard httpx.AsyncClient arguments (timeout, headers, etc.)
         """
         super().__init__(**kwargs)

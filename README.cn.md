@@ -1,4 +1,3 @@
-
 # x402-mock
 
 <p align="center">
@@ -7,137 +6,32 @@
   </a>
 </p>
 
-> 📚 协议入门：[什么是eip erc？](./docs/what-is-eip-erc.cn.md)（[预留英文版](./docs/what-is-eip-erc.en.md)）
-
-`x402-mock` 是一个完整实现 **HTTP 402 状态码支付流程** 的生产级模块。
-
-## 模块功能
-
-本模块完成了基于 **HTTP 402 Payment Required** 状态码的完整付款流程，实现了 Web2 HTTP 协议与 Web3 链上支付的无缝结合。
-
-该模块面向 **Web3 + ERC20（USDC 优先优化）**，完整实现了以下链路：
-
-> **Client（请求方）→ Server（被请求方）→ On-chain Settlement（链上结算）**
-
-核心特性：
-- ✅ 基于 HTTP 402 状态码的标准化支付协议
-- ✅ **USDC 优化**：从 EIP-2612 升级为 **ERC-3009（transferWithAuthorization）**，一步完成授权与划转，更省 gas
-- ✅ **通用 ERC20**：支持 **Permit2（permitTransferFrom）**，让大多数 ERC20 具备离线签名支付能力
-- ✅ 异步链上结算，不阻塞业务流程
-- ✅ 支持多种支付方式协商与匹配
-- 🤖 面向 **Agent-to-Agent** 自动化支付场景设计
+> 目录： [目录](./docs/index.zh.md)
+> 快速开始: [快速开始](./docs/quick_start.zh.md)
+> 文档： [文档](./docs/reference.zh.md)
+> 代码示例： [示例example](./example/)
+> 📚 协议入门：[x402-mock用了哪些evm协议](./docs/evm_docs.zh.md)（[预留英文版](./docs/evm_docs.md)）
 
 ---
 
-## 重要说明（与 Coinbase 版本差异）
+> 🌟 如果本项目或文档对您有所帮助，欢迎给我们点一个 **Star** —— 这是对我们最大的鼓励，感谢您的支持！[![GitHub stars](https://img.shields.io/github/stars/OpenPayhub/x402-mock?style=social)](https://github.com/OpenPayhub/x402-mock) 
 
-- 本实现不使用 facilitator/代付服务：链上结算交易由运行方自行广播，因此 **gas 由运行方承担**，并需要提供可用的 **RPC/Infra Key**（如 Infura/Alchemy 等）。
-- 支持白名单模式：调用方可携带自定义的 **`authorization key`**，由服务端校验后才允许访问需要收费的 API（可在进入 402/支付流程前进行拦截）。
+## 项目综述：x402-mock
+x402-mock 是一个专为 AI Agent 及服务端开发者设计的开源收款集成方案。我们的核心目标是提供一套即插即用的 SDK，帮助开发者在自己的服务端快速实现链上收款与转账功能，无需从零开始处理复杂的支付逻辑。
 
----
-
-## 设计目标
-
-- 🧪 **流程优先**：关注 x402 的交互与语义，而非工程完备性  
-- 🧠 **可理解性**：尽量减少隐藏逻辑，方便阅读与学习  
-- 🤖 **面向 Agent**：为未来 Agent 自动发起 / 接受 / 执行支付做准备  
-- 🔌 **可扩展性**：后续可自然演进为多链、多资产、多支付通道  
-
----
-
-## 完整交互流程
-
-### 1. 初始请求（未授权）
-
-**Client** 向 **Server** 的收费端口发起 GET 请求，请求时携带空的或错误的 `Authorization` header。
-
-**Server** 检测到未授权，返回 `402 Payment Required` 状态码，并在响应体（payload）中包含：
-- `access_token_endpoint`：获取访问令牌的端口地址
-- `payment_methods`：支持的收款方式列表（如 EVM/USDC、SVM/USDC 等）
-
-### 2. 支付方式匹配与签名
-
-**Client** 收到 402 响应后：
-1. 根据自己支持的付款方式，与 Server 提供的收款方式进行**匹配**
-2. 选择匹配的支付方式（如 EVM + USDC）
-3. 使用钱包私钥对支付信息进行**离线签名**，按币种生成对应的签名凭证：
-   - **USDC**：生成 **ERC-3009 Authorization**（用于链上 `transferWithAuthorization`）
-   - **其他 ERC20**：生成 **Permit2** 签名（用于链上 `permitTransferFrom`）
-
-### 3. 提交离线签名凭证获取访问令牌
-
-**Client** 将生成的签名凭证（authorization/permit）放入请求体（body），向 `access_token_endpoint` 发起 POST 请求。
-
-**Server** 收到签名凭证后，进行以下验证（字段会因 ERC-3009 / Permit2 而略有差异）：
-- ✅ **sender/owner**（付款地址）是否与签名者一致
-- ✅ **receiver/spender**（收款地址）是否为 Server 指定的地址
-- ✅ **有效期**（valid_before/deadline 等）是否仍然有效
-- ✅ **nonce** 是否未被使用（防重放）
-- ✅ **signature**（签名）是否合法
-- ✅ **余额/授权额度** 是否充足
-
-验证通过后：
-- 立即返回 `access_token` 给 Client
-- 同时触发**异步链上结算**（因为区块链交易速度较慢，采用异步处理避免阻塞）
-
-### 4. 使用访问令牌获取资源
-
-**Client** 收到 `access_token` 后：
-- 将 `access_token` 放入 `Authorization` header
-- 重新向收费端口发起 GET 请求
-- **Server** 验证令牌有效性后，返回请求的资源，完成交互
-
-### 5. 链上异步结算
-
-**Server** 在后台根据签名类型执行链上结算：
-- **USDC**：调用 `transferWithAuthorization`（ERC-3009）完成资金转移（相比 EIP-2612 的两步调用更省 gas）
-- **其他 ERC20**：调用 Uniswap Permit2 的 `permitTransferFrom` 完成资金转移（覆盖大多数 ERC20 的离线签名支付）
-
-结算结果可通过交易哈希（tx_hash）在区块链浏览器上查询。
+除了作为一个实用的工具插件，项目还承担了 HTTP 402 (Payment Required) 协议以及区块链协议的科普工作。我们正在整理和完善详尽的说明文档，旨在帮助想了解 AI 支付和链上协议的用户快速上手。无论是为了解决项目中的支付需求，还是想深入研究相关协议标准，x402-mock 都能提供从代码实现到理论参考的全方位支持，共同推动 AI 支付生态的开发效率。
 
 ---
 
 ## 流程图
 
-> 📌 完整交互流程示意图请参考下图  
-> [图片](.//assets/402workflow.png)
+> 📌 完整交互流程示意图请参考下图
+
+> ![图片](.//assets/402workflow.png)
 
 ---
 
-## 环境配置
-
-### 依赖安装
-
-本项目使用 `uv` 作为包管理工具。请在项目根目录下执行：
-
-```bash
-uv add x402-mock
-uv sync
-```
-[**文档地址**](https://openpayhub.github.io/x402-mock/)
-
-### 环境变量配置
-
-在项目**根目录**创建 `.env` 文件，或配置以下环境变量：
-
-#### 必需配置
-
-- **`EVM_PRIVATE_KEY`**（必须）  
-  钱包的私钥，用于签名和链上交易。**请妥善保管，不要泄露！**
-
-#### 可选配置
-
-- **`EVM_INFURA_KEY`**（可选）  
-  Infura API Key（或替换为你自己的 RPC/Infra Provider Key）。由于本实现不使用 facilitator/代付服务，生产环境强烈建议提供稳定的 RPC，否则将使用公共节点（速度和稳定性可能较差）。
-
-> 💡 未来将增加更多参数支持，如 `SVM_PRIVATE_KEY` 等。
-
-示例 `.env` 文件：
-
-```env
-EVM_PRIVATE_KEY=your_private_key_here
-EVM_INFURA_KEY=your_infura_key_here  # 可选
-```
+[**网页地址**](https://openpayhub.github.io/x402-mock/)
 
 ### 网络选择建议
 
@@ -148,74 +42,6 @@ EVM_INFURA_KEY=your_infura_key_here  # 可选
 - **验证流程**：确认完整支付流程、链上结算、异常处理等功能正常
 
 测试通过后，可切换到主网进行生产部署。
-
----
-
-## 使用示例
-
-### Server 端最简单代码示例
-
-```python
-# Server 最简单端示例代码
-from x402_mock.servers import Http402Server, create_private_key
-from x402_mock.adapters.evm.schemas import EVMPaymentComponent
-
-token_key = create_private_key() # 服务端签名私钥，用于对 access_token 进行签发和验证（非区块链钱包私钥，可由配置提供）
-
-app = Http402Server(
-  token_key=token_key,
-  token_expires_in=300 # access_token到期秒数
-)
-app.add_payment_method(
-    EVMPaymentComponent(
-        amount=0.5,
-        currency="USDC",
-        caip2="eip155:11155111",
-        token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
-    )
-) # 接受的收款方式
-
-@app.get("/api/protected-data") # 使用方式继承fastapi
-@app.payment_required # 只要有该装饰器，就代表该端口收费。
-async def get_protected_data(authorization):
-    """This endpoint requires payment to access."""
-    # 这里可以写端口逻辑
-    return {
-        "message": "Payment verified successfully",
-    }
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="localhost", port=8000)
-
-```
-
-### Client 端最简单代码示例
-
-```python
-from x402_mock.clients.http_client import Http402Client
-from x402_mock.adapters.adapters_hub import AdapterHub
-from x402_mock.adapters.evm.schemas import EVMPaymentComponent
-
-wpk = "your eoa private key"
-ah = AdapterHub(wpk)
-
-async with Http402Client() as client: # 使用方式继承httpx，
-  clinet.add_payment_method(
-            EVMPaymentComponent(
-                caip2="eip155:11155111",
-                amount=0.8,
-                currency="USDC",
-                token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
-            )
-        ) # 增加付款方式，先设置的付款方式优先匹配。
-
-  response = client.get("http://localhost:8000/api/protected-data") # 请求资源端口
-
-```
-* 代码示例:
-[示例example](./example/)
-
 
 ---
 
@@ -238,12 +64,13 @@ async with Http402Client() as client: # 使用方式继承httpx，
 * [ ] 支持 智能合约钱包地址收款
 * [ ] 支持 EIP-6492（未部署合约的签名验证）
 * [ ] 支持 SVM（Solana Virtual Machine）及 Solana 生态
+* [ ] 配合 大模型调用
 
 ---
 
 ## 声明与建议
 
-本模块已达到生产可用级别，但在部署到生产环境前，请注意：
+本模块生产可用，但在部署到生产环境前，请注意：
 
 ⚠️ **强烈建议先在测试网（如 Sepolia）进行充分测试**  
 ✅ 确认完整支付流程、异常处理、链上结算等功能符合预期  

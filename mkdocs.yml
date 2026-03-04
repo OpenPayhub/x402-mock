@@ -52,10 +52,10 @@ extra:
   alternate:
     - name: English
       lang: en
-      link: /
+      link: ./
     - name: 简体中文
       lang: zh
-      link: /zh/
+      link: ./zh/
 
 markdown_extensions:
   - toc:

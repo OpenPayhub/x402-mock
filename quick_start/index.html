@@ -1,0 +1,1748 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="HTTP 402 payment workflow implementation">
+      
+      
+        <meta name="author" content="Gengxing Pan">
+      
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../reference/">
+      
+      
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+          <link rel="alternate" href="../zh/quick_start/" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Quick Start - x402-mock Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#quick-start" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="x402-mock Documentation" class="md-header__button md-logo" aria-label="x402-mock Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            x402-mock Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Quick Start
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="../zh/quick_start/" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/OpenPayhub/x402-mock" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    OpenPayhub/x402-mock
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="x402-mock Documentation" class="md-nav__button md-logo" aria-label="x402-mock Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    x402-mock Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/OpenPayhub/x402-mock" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    OpenPayhub/x402-mock
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Concepts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#payment-flow-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Payment Flow Overview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#separation-of-responsibilities-with-status-code-402" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Separation of Responsibilities with Status Code 402
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#server-payment-receiver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server (Payment Receiver)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Server (Payment Receiver)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-server-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating a Server Instance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-payment-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding Payment Methods
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#protecting-api-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protecting API Endpoints
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Event Handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#client-payment-payer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client (Payment Payer)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Client (Payment Payer)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-client-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating a Client Instance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#payment-flow-automation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Payment Flow Automation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#complete-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Complete Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#complete-server-side-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Server-side Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-client-side-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Client-side Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#custom-rpc-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom RPC Nodes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-chain-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Chain Support
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#on-chain-information-retrieval-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        On-chain Information Retrieval Tools
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="On-chain Information Retrieval Tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#import-utility-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import Utility Methods
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#method-description" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Method Description
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-filling-payment-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-filling Payment Components
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debug-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debug Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../evm_docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Relatived Docs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Concepts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#payment-flow-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Payment Flow Overview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#separation-of-responsibilities-with-status-code-402" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Separation of Responsibilities with Status Code 402
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#server-payment-receiver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server (Payment Receiver)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Server (Payment Receiver)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-server-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating a Server Instance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-payment-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding Payment Methods
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#protecting-api-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protecting API Endpoints
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Event Handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#client-payment-payer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client (Payment Payer)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Client (Payment Payer)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-client-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating a Client Instance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#payment-flow-automation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Payment Flow Automation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#complete-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Complete Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#complete-server-side-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Server-side Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-client-side-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Client-side Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#custom-rpc-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom RPC Nodes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-chain-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Chain Support
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#on-chain-information-retrieval-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        On-chain Information Retrieval Tools
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="On-chain Information Retrieval Tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#import-utility-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import Utility Methods
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#method-description" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Method Description
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-filling-payment-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-filling Payment Components
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debug-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debug Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="quick-start">Quick Start</h1>
+<p>x402-mock is an implementation of a payment protocol based on HTTP 402 status code, supporting token payments on EVM blockchains. This guide will help you get started quickly.</p>
+<h2 id="installation">Installation</h2>
+<p>This project uses <code>uv</code> as the package manager.</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>add<span class="w"> </span>x402-mock
+uv<span class="w"> </span>sync
+</code></pre></div>
+<h3 id="environment-configuration">Environment Configuration</h3>
+<p>Create a <code>.env</code> file in the project root directory to configure your private key and RPC service keys:</p>
+<div class="highlight"><pre><span></span><code># Required: EVM private key (for signing and receiving payments)
+EVM_PRIVATE_KEY=your_private_key_here
+
+# Optional: API keys for Infura or Alchemy (for accessing blockchain networks)
+EVM_INFURA_KEY=your_infura_key_here
+EVM_ALCHEMY_KEY=your_alchemy_key_here
+</code></pre></div>
+<h2 id="core-concepts">Core Concepts</h2>
+<h3 id="payment-flow-overview">Payment Flow Overview</h3>
+<p>x402-mock implements a payment flow with separation of responsibilities, similar to a cinema's ticketing system:</p>
+<ol>
+<li><strong>Server (Payment Receiver)</strong>: Provides services and accepts payments, similar to a cinema</li>
+<li><strong>Client (Payment Payer)</strong>: Requests services and completes payments, similar to an audience member</li>
+<li><strong>Payment Process</strong>:</li>
+<li>Client requests a protected resource</li>
+<li>Server verifies the Client's access token (similar to ticket checking)</li>
+<li>If the token is invalid, returns 402 status code + payment information (similar to directing to ticket office)</li>
+<li>Client completes signed payment based on payment information (similar to buying a ticket)</li>
+<li>Client obtains access token and retries the resource request (similar to entering with ticket)</li>
+</ol>
+<h3 id="separation-of-responsibilities-with-status-code-402">Separation of Responsibilities with Status Code 402</h3>
+<p>The HTTP 402 "Payment Required" status code implements separation of responsibilities in this project:
+- <strong>Server side</strong>: Only responsible for verifying the validity of access tokens, not handling payment logic
+- <strong>Payment verification</strong>: Handled by an independent <code>/token</code> endpoint, receiving payment signatures and issuing access tokens
+- <strong>Client side</strong>: Automatically handles 402 responses, completes payment flow and retries requests</p>
+<p>This design decouples payment logic from business logic, improving system maintainability and security.</p>
+<h2 id="server-payment-receiver">Server (Payment Receiver)</h2>
+<p>Server is the party that provides services and accepts payments. Main responsibilities include:
+1. Defining accepted payment methods (chain, network, token)
+2. Verifying the authenticity and validity of payment signatures
+3. Completing on-chain transfer settlement
+4. Issuing access tokens</p>
+<h3 id="creating-a-server-instance">Creating a Server Instance</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.servers</span><span class="w"> </span><span class="kn">import</span> <span class="n">Http402Server</span><span class="p">,</span> <span class="n">create_private_key</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.adapters.evm.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">EVMPaymentComponent</span>
+
+<span class="c1"># Generate access token signing key</span>
+<span class="n">token_key</span> <span class="o">=</span> <span class="n">create_private_key</span><span class="p">()</span>
+
+<span class="c1"># Create Server instance (inherits from FastAPI)</span>
+<span class="n">app</span> <span class="o">=</span> <span class="n">Http402Server</span><span class="p">(</span>
+    <span class="n">token_key</span><span class="o">=</span><span class="n">token_key</span><span class="p">,</span>      <span class="c1"># Access token signing key</span>
+    <span class="n">token_expires_in</span><span class="o">=</span><span class="mi">300</span>      <span class="c1"># Token validity period (seconds)</span>
+<span class="p">)</span>
+</code></pre></div>
+<h4 id="http402server-parameter-description">Http402Server Parameter Description</h4>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>token_key</code></td>
+<td>str</td>
+<td>Yes</td>
+<td>Access token signing key, can be generated using <code>create_private_key()</code></td>
+</tr>
+<tr>
+<td><code>token_expires_in</code></td>
+<td>int</td>
+<td>No</td>
+<td>Access token validity period (seconds), default 3600</td>
+</tr>
+<tr>
+<td><code>enable_auto_settlement</code></td>
+<td>bool</td>
+<td>No</td>
+<td>Whether to automatically settle payments, default True</td>
+</tr>
+<tr>
+<td><code>token_endpoint</code></td>
+<td>str</td>
+<td>No</td>
+<td>Token exchange endpoint path, default "/token"</td>
+</tr>
+</tbody>
+</table>
+<h3 id="adding-payment-methods">Adding Payment Methods</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Add EVM payment method</span>
+<span class="n">app</span><span class="o">.</span><span class="n">add_payment_method</span><span class="p">(</span>
+    <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+        <span class="n">amount</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>          <span class="c1"># Payment amount (human-readable units)</span>
+        <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span><span class="p">,</span>     <span class="c1"># Token symbol</span>
+        <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:11155111&quot;</span><span class="p">,</span>  <span class="c1"># CAIP-2 chain identifier</span>
+        <span class="n">token</span><span class="o">=</span><span class="s2">&quot;0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238&quot;</span>  <span class="c1"># Token contract address</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+<h4 id="evmpaymentcomponent-parameter-description">EVMPaymentComponent Parameter Description</h4>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>amount</code></td>
+<td>float</td>
+<td>Yes</td>
+<td>Payment amount (human-readable units, e.g., 0.5 USDC)</td>
+</tr>
+<tr>
+<td><code>currency</code></td>
+<td>str</td>
+<td>Yes</td>
+<td>Token symbol (e.g., "USDC", "USDT", "ETH")</td>
+</tr>
+<tr>
+<td><code>caip2</code></td>
+<td>str</td>
+<td>Yes</td>
+<td>CAIP-2 chain identifier (format: <code>eip155:&lt;chain_id&gt;</code>)</td>
+</tr>
+<tr>
+<td><code>token</code></td>
+<td>str</td>
+<td>Recommended</td>
+<td>Token contract address (0x prefix, 42 characters)</td>
+</tr>
+<tr>
+<td><code>pay_to</code></td>
+<td>str</td>
+<td>No</td>
+<td>Payment receiving address, defaults to address corresponding to environment variable private key</td>
+</tr>
+<tr>
+<td><code>rpc_url</code></td>
+<td>str</td>
+<td>No</td>
+<td>RPC node URL, defaults to public nodes or automatically configured based on environment variables</td>
+</tr>
+<tr>
+<td><code>token_name</code></td>
+<td>str</td>
+<td>No</td>
+<td>Token name, can be omitted if automatically retrieved</td>
+</tr>
+<tr>
+<td><code>token_decimals</code></td>
+<td>int/str</td>
+<td>No</td>
+<td>Token decimals, can be omitted if automatically retrieved</td>
+</tr>
+<tr>
+<td><code>token_version</code></td>
+<td>int/str</td>
+<td>No</td>
+<td>Token version, can be omitted if automatically retrieved</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Note</strong>: If <code>token</code>, <code>token_name</code>, <code>token_decimals</code>, <code>token_version</code> are not provided, the system will automatically query them based on <code>caip2</code> and <code>currency</code>.</p>
+<h3 id="protecting-api-endpoints">Protecting API Endpoints</h3>
+<p>Use the <code>@app.payment_required</code> decorator to protect endpoints that require payment:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/api/protected-data&quot;</span><span class="p">)</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">payment_required</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_protected_data</span><span class="p">(</span><span class="n">payload</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Endpoint that requires payment to access&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="s2">&quot;Payment verified successfully&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;user_address&quot;</span><span class="p">:</span> <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;address&quot;</span><span class="p">]</span>
+    <span class="p">}</span>
+</code></pre></div>
+<h3 id="event-handling">Event Handling</h3>
+<p>Server provides an event system where you can listen to various events during the payment process:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.engine.events</span><span class="w"> </span><span class="kn">import</span> <span class="n">SettleSuccessEvent</span>
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">hook</span><span class="p">(</span><span class="n">SettleSuccessEvent</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_settle_success</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">deps</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Processing logic when payment succeeds&quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Payment succeeded: </span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">settlement_result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="c1"># You can log, send notifications, etc. here</span>
+</code></pre></div>
+<p>Available event types:
+- <code>RequestInitEvent</code>: Request initialization
+- <code>RequestTokenEvent</code>: Token request
+- <code>TokenIssuedEvent</code>: Token issued
+- <code>VerifyFailedEvent</code>: Verification failed
+- <code>AuthorizationSuccessEvent</code>: Authorization succeeded
+- <code>Http402PaymentEvent</code>: Payment required
+- <code>SettleSuccessEvent</code>: Settlement succeeded</p>
+<h2 id="client-payment-payer">Client (Payment Payer)</h2>
+<p>Client is the party that requests services and completes payments. Main responsibilities include:
+1. Registering supported payment methods
+2. Automatically handling 402 responses
+3. Generating payment signatures
+4. Exchanging signatures for access tokens</p>
+<h3 id="creating-a-client-instance">Creating a Client Instance</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.clients.http_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Http402Client</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.adapters.evm.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">EVMPaymentComponent</span>
+
+<span class="k">async</span> <span class="k">with</span> <span class="n">Http402Client</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="c1"># Register payment method</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">add_payment_method</span><span class="p">(</span>
+        <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+            <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:11155111&quot;</span><span class="p">,</span>
+            <span class="n">amount</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>          <span class="c1"># Maximum payment amount limit</span>
+            <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span><span class="p">,</span>
+            <span class="n">token</span><span class="o">=</span><span class="s2">&quot;0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238&quot;</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Send request (automatically handles 402 payment flow)</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://localhost:8000/api/protected-data&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">())</span>
+</code></pre></div>
+<h4 id="special-notes-on-client-side-evmpaymentcomponent">Special Notes on Client-side EVMPaymentComponent</h4>
+<p>On the Client side, the <code>amount</code> parameter represents the <strong>maximum payment amount limit</strong>. If the Server requests an amount exceeding this limit, the Client will refuse to sign the payment.</p>
+<h3 id="payment-flow-automation">Payment Flow Automation</h3>
+<p><code>Http402Client</code> inherits from <code>httpx.AsyncClient</code> and is fully compatible with all its methods. When receiving a 402 response, the Client automatically:</p>
+<ol>
+<li>Parses payment requirements</li>
+<li>Matches registered payment methods</li>
+<li>Generates payment signature</li>
+<li>Exchanges for access token at <code>/token</code> endpoint</li>
+<li>Retries original request with new token</li>
+</ol>
+<p>The entire process is transparent to developers; you just need to use the HTTP client normally.</p>
+<h2 id="complete-examples">Complete Examples</h2>
+<h3 id="complete-server-side-example">Complete Server-side Example</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.servers</span><span class="w"> </span><span class="kn">import</span> <span class="n">Http402Server</span><span class="p">,</span> <span class="n">create_private_key</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.adapters.evm.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">EVMPaymentComponent</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.engine.events</span><span class="w"> </span><span class="kn">import</span> <span class="n">SettleSuccessEvent</span>
+
+<span class="c1"># Create Server</span>
+<span class="n">token_key</span> <span class="o">=</span> <span class="n">create_private_key</span><span class="p">()</span>
+<span class="n">app</span> <span class="o">=</span> <span class="n">Http402Server</span><span class="p">(</span><span class="n">token_key</span><span class="o">=</span><span class="n">token_key</span><span class="p">,</span> <span class="n">token_expires_in</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+
+<span class="c1"># Add payment method</span>
+<span class="n">app</span><span class="o">.</span><span class="n">add_payment_method</span><span class="p">(</span>
+    <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+        <span class="n">amount</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+        <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span><span class="p">,</span>
+        <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:11155111&quot;</span><span class="p">,</span>
+        <span class="n">token</span><span class="o">=</span><span class="s2">&quot;0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238&quot;</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Payment success event handling</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">hook</span><span class="p">(</span><span class="n">SettleSuccessEvent</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">log_payment_success</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">deps</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;💰 Payment received: </span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">settlement_result</span><span class="o">.</span><span class="n">authorized_amount</span><span class="si">}</span><span class="s2"> USDC&quot;</span><span class="p">)</span>
+
+<span class="c1"># Protected API endpoint</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/api/premium-content&quot;</span><span class="p">)</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">payment_required</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_premium_content</span><span class="p">(</span><span class="n">payload</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;This is premium content&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;paid_by&quot;</span><span class="p">:</span> <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;address&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;timestamp&quot;</span><span class="p">)</span>
+    <span class="p">}</span>
+
+<span class="c1"># Run Server (using uvicorn)</span>
+<span class="c1"># uvicorn server:app --host 0.0.0.0 --port 8000</span>
+</code></pre></div>
+<h3 id="complete-client-side-example">Complete Client-side Example</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.clients.http_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Http402Client</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.adapters.evm.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">EVMPaymentComponent</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">Http402Client</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+        <span class="c1"># Register payment method (supports multiple)</span>
+        <span class="n">client</span><span class="o">.</span><span class="n">add_payment_method</span><span class="p">(</span>
+            <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+                <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:11155111&quot;</span><span class="p">,</span>
+                <span class="n">amount</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>      <span class="c1"># Pay up to 1.0 USDC</span>
+                <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span><span class="p">,</span>
+                <span class="n">token</span><span class="o">=</span><span class="s2">&quot;0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238&quot;</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Request protected content (automatically handles payment)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://localhost:8000/api/premium-content&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Content obtained: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;content&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Payer: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;paid_by&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Request failed: </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</code></pre></div>
+<h2 id="advanced-configuration">Advanced Configuration</h2>
+<h3 id="custom-rpc-nodes">Custom RPC Nodes</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Server-side specify RPC node</span>
+<span class="n">app</span><span class="o">.</span><span class="n">add_payment_method</span><span class="p">(</span>
+    <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+        <span class="n">amount</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+        <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span><span class="p">,</span>
+        <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">,</span>  <span class="c1"># Ethereum mainnet</span>
+        <span class="n">token</span><span class="o">=</span><span class="s2">&quot;0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48&quot;</span><span class="p">,</span>  <span class="c1"># USDC</span>
+        <span class="n">rpc_url</span><span class="o">=</span><span class="s2">&quot;https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY&quot;</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 id="multi-chain-support">Multi-Chain Support</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Support payment methods for multiple chains</span>
+<span class="n">app</span><span class="o">.</span><span class="n">add_payment_method</span><span class="p">(</span>
+    <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+        <span class="n">amount</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+        <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;ETH&quot;</span><span class="p">,</span>
+        <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">,</span>  <span class="c1"># Ethereum mainnet</span>
+        <span class="n">token</span><span class="o">=</span><span class="kc">None</span>  <span class="c1"># Use native token</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">app</span><span class="o">.</span><span class="n">add_payment_method</span><span class="p">(</span>
+    <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+        <span class="n">amount</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span><span class="p">,</span>
+        <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:42161&quot;</span><span class="p">,</span>  <span class="c1"># Arbitrum</span>
+        <span class="n">token</span><span class="o">=</span><span class="s2">&quot;0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8&quot;</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+<h2 id="on-chain-information-retrieval-tools">On-chain Information Retrieval Tools</h2>
+<p>When configuring payment methods, you may need to obtain various on-chain information such as RPC node addresses, token contract addresses, token decimals, and versions. x402-mock provides a series of utility methods to simplify retrieving this information.</p>
+<h3 id="import-utility-methods">Import Utility Methods</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.adapters.evm.constants</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">EvmChainInfoFromEthereumLists</span><span class="p">,</span>
+    <span class="n">EvmPublicRpcFromChainList</span><span class="p">,</span>
+    <span class="n">EvmTokenListFromUniswap</span><span class="p">,</span>
+    <span class="n">fetch_erc20_name_version_decimals</span><span class="p">,</span>
+    <span class="n">get_rpc_key_from_env</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 id="method-description">Method Description</h3>
+<h4 id="1-evmchaininfofromethereumlists">1. <code>EvmChainInfoFromEthereumLists</code></h4>
+<p><strong>Function</strong>: Retrieve detailed EVM chain configuration information from the ethereum-lists repository.</p>
+<p><strong>Main uses</strong>:
+- Get chain's Infura/Alchemy RPC URLs (with API key placeholders)
+- Get public RPC node lists
+- Get basic chain information (name, explorer addresses, etc.)</p>
+<p><strong>Example usage</strong>:
+<div class="highlight"><pre><span></span><code><span class="n">chain_info</span> <span class="o">=</span> <span class="n">EvmChainInfoFromEthereumLists</span><span class="p">()</span>
+
+<span class="c1"># Get Infura RPC URL (needs API key filled)</span>
+<span class="n">infura_url</span> <span class="o">=</span> <span class="n">chain_info</span><span class="o">.</span><span class="n">get_infura_rpc_url</span><span class="p">(</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">)</span>
+<span class="c1"># Returns something like: https://mainnet.infura.io/v3/{RPC_KEYS}</span>
+
+<span class="c1"># Get Alchemy RPC URL (needs API key filled)</span>
+<span class="n">alchemy_url</span> <span class="o">=</span> <span class="n">chain_info</span><span class="o">.</span><span class="n">get_alchemy_rpc_url</span><span class="p">(</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">)</span>
+<span class="c1"># Returns something like: https://eth-mainnet.g.alchemy.com/v2/{RPC_KEYS}</span>
+
+<span class="c1"># Get public RPC node list</span>
+<span class="n">public_rpcs</span> <span class="o">=</span> <span class="n">chain_info</span><span class="o">.</span><span class="n">get_public_rpc_urls</span><span class="p">(</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">)</span>
+<span class="c1"># Returns: [&quot;https://api.mycryptoapi.com/eth&quot;, ...]</span>
+</code></pre></div></p>
+<h4 id="2-evmpublicrpcfromchainlist">2. <code>EvmPublicRpcFromChainList</code></h4>
+<p><strong>Function</strong>: Retrieve public RPC node information from Chainlist.org.</p>
+<p><strong>Main uses</strong>:
+- Get public RPC nodes with no tracking or limited tracking
+- Select RPC nodes based on privacy preferences
+- Support HTTPS and WebSocket protocols</p>
+<p><strong>Example usage</strong>:
+<div class="highlight"><pre><span></span><code><span class="n">rpc_finder</span> <span class="o">=</span> <span class="n">EvmPublicRpcFromChainList</span><span class="p">()</span>
+
+<span class="c1"># Get public RPC node with no tracking</span>
+<span class="n">public_rpc</span> <span class="o">=</span> <span class="n">rpc_finder</span><span class="o">.</span><span class="n">pick_public_rpc</span><span class="p">(</span>
+    <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">,</span>
+    <span class="n">start_with</span><span class="o">=</span><span class="s2">&quot;https://&quot;</span><span class="p">,</span>
+    <span class="n">tracking_type</span><span class="o">=</span><span class="s2">&quot;none&quot;</span>
+<span class="p">)</span>
+<span class="c1"># Returns something like: https://rpc.ankr.com/eth</span>
+
+<span class="c1"># Get all public RPC information for a specific chain</span>
+<span class="n">chain_rpcs</span> <span class="o">=</span> <span class="n">rpc_finder</span><span class="o">.</span><span class="n">get_specific_chain_public_rpcs</span><span class="p">(</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">)</span>
+</code></pre></div></p>
+<h4 id="3-evmtokenlistfromuniswap">3. <code>EvmTokenListFromUniswap</code></h4>
+<p><strong>Function</strong>: Retrieve token information from Uniswap's official token list.</p>
+<p><strong>Main uses</strong>:
+- Get token contract addresses and decimals
+- Support multi-chain token queries
+- Automatic data caching to reduce network requests</p>
+<p><strong>Example usage</strong>:
+<div class="highlight"><pre><span></span><code><span class="n">token_finder</span> <span class="o">=</span> <span class="n">EvmTokenListFromUniswap</span><span class="p">()</span>
+
+<span class="c1"># Get token address and decimals</span>
+<span class="n">address</span><span class="p">,</span> <span class="n">decimals</span> <span class="o">=</span> <span class="n">token_finder</span><span class="o">.</span><span class="n">get_token_address_and_decimals</span><span class="p">(</span>
+    <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">,</span>
+    <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span>
+<span class="p">)</span>
+<span class="c1"># Returns: (&quot;0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48&quot;, 6)</span>
+</code></pre></div></p>
+<h4 id="4-fetch_erc20_name_version_decimals">4. <code>fetch_erc20_name_version_decimals</code></h4>
+<p><strong>Function</strong>: Query token details directly from chain RPC.</p>
+<p><strong>Main uses</strong>:
+- Query token's <code>name()</code>, <code>version()</code> and <code>decimals()</code> functions
+- Verify complete token contract information
+- Get latest on-chain data</p>
+<p><strong>Example usage</strong>:
+<div class="highlight"><pre><span></span><code><span class="c1"># Query token information from chain</span>
+<span class="n">name</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">decimals</span> <span class="o">=</span> <span class="n">fetch_erc20_name_version_decimals</span><span class="p">(</span>
+    <span class="n">rpc_url</span><span class="o">=</span><span class="s2">&quot;https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY&quot;</span><span class="p">,</span>
+    <span class="n">token_address</span><span class="o">=</span><span class="s2">&quot;0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48&quot;</span>
+<span class="p">)</span>
+<span class="c1"># Returns: (&quot;USD Coin&quot;, &quot;2&quot;, 6)</span>
+</code></pre></div></p>
+<h4 id="5-get_rpc_key_from_env">5. <code>get_rpc_key_from_env</code></h4>
+<p><strong>Function</strong>: Get RPC service provider API keys from environment variables.</p>
+<p><strong>Main uses</strong>:
+- Securely get Infura or Alchemy API keys
+- Support custom environment variable names
+- Returns <code>None</code> to indicate using public nodes</p>
+<p><strong>Example usage</strong>:
+<div class="highlight"><pre><span></span><code><span class="c1"># Get Infura key (default)</span>
+<span class="n">infura_key</span> <span class="o">=</span> <span class="n">get_rpc_key_from_env</span><span class="p">(</span><span class="s2">&quot;EVM_INFURA_KEY&quot;</span><span class="p">)</span>
+
+<span class="c1"># Get Alchemy key</span>
+<span class="n">alchemy_key</span> <span class="o">=</span> <span class="n">get_rpc_key_from_env</span><span class="p">(</span><span class="s2">&quot;EVM_ALCHEMY_KEY&quot;</span><span class="p">)</span>
+
+<span class="c1"># Build RPC URL using key</span>
+<span class="k">if</span> <span class="n">infura_key</span><span class="p">:</span>
+    <span class="n">rpc_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;https://mainnet.infura.io/v3/</span><span class="si">{</span><span class="n">infura_key</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="c1"># Use public node</span>
+    <span class="n">rpc_finder</span> <span class="o">=</span> <span class="n">EvmPublicRpcFromChainList</span><span class="p">()</span>
+    <span class="n">rpc_url</span> <span class="o">=</span> <span class="n">rpc_finder</span><span class="o">.</span><span class="n">pick_public_rpc</span><span class="p">(</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">)</span>
+</code></pre></div></p>
+<h3 id="auto-filling-payment-components">Auto-filling Payment Components</h3>
+<p>These utility methods are typically used internally by <code>EVMPaymentComponent</code> to automatically fill in missing information:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Only provide basic information, system automatically queries missing data</span>
+<span class="n">payment</span> <span class="o">=</span> <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+    <span class="n">amount</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+    <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span><span class="p">,</span>
+    <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:1&quot;</span>
+    <span class="c1"># token, token_name, token_decimals, token_version are automatically queried</span>
+<span class="p">)</span>
+
+<span class="c1"># System internally will:</span>
+<span class="c1"># 1. Use EvmTokenListFromUniswap to get USDC contract address and decimals</span>
+<span class="c1"># 2. Use fetch_erc20_name_version_decimals to get token name and version</span>
+<span class="c1"># 3. Use EvmPublicRpcFromChainList to get public RPC node</span>
+<span class="c1"># 4. Use get_rpc_key_from_env to check if there are private RPC keys</span>
+</code></pre></div>
+<h3 id="best-practices">Best Practices</h3>
+<ol>
+<li><strong>Production environment</strong>: Recommend providing complete <code>token</code>, <code>rpc_url</code>, etc. information to reduce network queries</li>
+<li><strong>Development environment</strong>: Can rely on automatic queries to simplify configuration</li>
+<li><strong>Performance considerations</strong>: Initial queries make network requests, subsequent uses cache</li>
+<li><strong>Error handling</strong>: When network is unavailable, automatically falls back to built-in default configurations</li>
+</ol>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="common-issues">Common Issues</h3>
+<ol>
+<li><strong>Payment fails after 402 response</strong></li>
+<li>Check if private key configuration is correct</li>
+<li>Confirm sufficient token balance</li>
+<li>
+<p>Verify chain ID and token address match</p>
+</li>
+<li>
+<p><strong>Token verification fails</strong></p>
+</li>
+<li>Check if <code>token_key</code> is consistent</li>
+<li>Confirm token hasn't expired</li>
+<li>
+<p>Verify signature algorithm</p>
+</li>
+<li>
+<p><strong>RPC connection issues</strong></p>
+</li>
+<li>Check network connection</li>
+<li>Confirm RPC URL is valid</li>
+<li>Consider using backup nodes</li>
+</ol>
+<h3 id="debug-mode">Debug Mode</h3>
+<p>Enable detailed logging:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li>View <a href="../reference/">API Reference Documentation</a> for detailed interface specifications</li>
+<li>Explore <a href="../example/">Example Code</a></li>
+<li>Understand <a href="../reference/#Engine">Event System</a> to implement custom business logic</li>
+</ul>
+<hr />
+<p><strong>Tips</strong>: In production environments, please ensure:
+1. Use secure key management solutions
+2. Configure appropriate timeout and retry strategies
+3. Monitor payment success rate and failure reasons
+4. Regularly update dependencies to get security fixes</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

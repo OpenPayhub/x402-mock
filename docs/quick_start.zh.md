@@ -310,6 +310,58 @@ app.add_payment_method(
 )
 ```
 
+## 核心组件 AdapterHub
+
+AdapterHub 是统一的区块链适配器网关，为用户不依赖外部 facilitors，自身完成验证签名和转账操作的工具。支持 EVM 区块链（SVM 开发中）。
+
+### 核心方法
+
+| 方法 | 功能 |
+|------|------|
+| `register_payment_methods()` | 注册支付方式（`client_role=False` 为 Server 角色，`True` 为 Client 角色） |
+| `signature()` | 生成支付签名（Client 调用） |
+| `verify_signature()` | 验证签名（Server 调用） |
+| `settle()` | 执行链上转账（Server 调用） |
+| `initialize()` | 客户端初始化（如 Permit2 授权） |
+
+### 代码示例
+
+```python
+from x402_mock.adapters import AdapterHub
+from x402_mock.adapters.evm.schemas import EVMPaymentComponent
+
+# 1. 初始化（需要 EVM 私钥）
+hub = AdapterHub(
+    evm_private_key="0xyour_private_key",  # 或使用环境变量 EVM_PRIVATE_KEY
+    request_timeout=60
+)
+
+# 2. 注册支付方式
+hub.register_payment_methods(
+    EVMPaymentComponent(
+        amount=1.0,
+        currency="USDC",
+        caip2="eip155:11155111",
+        token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+    ),
+    client_role=True  # Client 角色设为 True
+)
+
+# 3. Client 生成签名
+permit = await hub.signature(remote_components)
+
+# 4. Server 验证签名
+result = await hub.verify_signature(permit)
+if result.is_valid():
+    # 5. Server 执行转账
+    confirmation = await hub.settle(permit)
+```
+
+### 未来规划
+
+- **bundle_settle**：批量转账，减少 Gas 费用
+- **SVM 支持**：Solana 适配器（开发中）
+
 ## 链上信息获取工具
 
 在配置支付方式时，您可能需要获取链上的各种信息，如 RPC 节点地址、代币合约地址、代币精度和版本等。x402-mock 提供了一系列工具方法来简化这些信息的获取。

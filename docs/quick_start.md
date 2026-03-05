@@ -310,6 +310,58 @@ app.add_payment_method(
 )
 ```
 
+## Core Component AdapterHub
+
+AdapterHub is a unified blockchain adapter gateway that enables users to verify signatures and complete transfers without relying on external facilitators. It supports EVM blockchains (SVM in development).
+
+### Core Methods
+
+| Method | Function |
+|--------|----------|
+| `register_payment_methods()` | Register payment methods (`client_role=False` for Server, `True` for Client) |
+| `signature()` | Generate payment signature (called by Client) |
+| `verify_signature()` | Verify signature (called by Server) |
+| `settle()` | Execute on-chain transfer (called by Server) |
+| `initialize()` | Client initialization (e.g., Permit2 approval) |
+
+### Code Example
+
+```python
+from x402_mock.adapters import AdapterHub
+from x402_mock.adapters.evm.schemas import EVMPaymentComponent
+
+# 1. Initialize (requires EVM private key)
+hub = AdapterHub(
+    evm_private_key="0xyour_private_key",  # or use environment variable EVM_PRIVATE_KEY
+    request_timeout=60
+)
+
+# 2. Register payment method
+hub.register_payment_methods(
+    EVMPaymentComponent(
+        amount=1.0,
+        currency="USDC",
+        caip2="eip155:11155111",
+        token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+    ),
+    client_role=True  # Set to True for Client role
+)
+
+# 3. Client generates signature
+permit = await hub.signature(remote_components)
+
+# 4. Server verifies signature
+result = await hub.verify_signature(permit)
+if result.is_valid():
+    # 5. Server executes transfer
+    confirmation = await hub.settle(permit)
+```
+
+### Future Roadmap
+
+- **bundle_settle**: Batch transfers to reduce Gas fees
+- **SVM Support**: Solana adapter (in development)
+
 ## On-chain Information Retrieval Tools
 
 When configuring payment methods, you may need to obtain various on-chain information such as RPC node addresses, token contract addresses, token decimals, and versions. x402-mock provides a series of utility methods to simplify retrieving this information.

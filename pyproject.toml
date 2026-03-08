@@ -50,6 +50,9 @@ docs = [
     "mkdocstrings[python]",
     "mkdocs-static-i18n"
 ]
+mcp = [
+    "mcp[cli]>=1.26.0",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

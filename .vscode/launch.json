@@ -26,6 +26,14 @@
       "module": "example.client_example"
     },
     {
+      "name": "Debug MCP server",
+      "type": "debugpy",
+      "request": "launch",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "module": "example.mcp_server_example"
+    },
+    {
       "name": "Debug Current File",
       "type": "debugpy",
       "request": "launch",

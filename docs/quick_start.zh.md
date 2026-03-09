@@ -540,12 +540,153 @@ payment = EVMPaymentComponent(
 
 ### 调试模式
 
-启用详细日志记录：
+x402-mock 使用 [loguru](https://github.com/Delgan/loguru) 作为日志库，默认不输出任何日志（避免干扰您的业务日志）。通过 `setup_logger` 开启：
 
 ```python
-import logging
-logging.basicConfig(level=logging.DEBUG)
+from x402_mock.utils import setup_logger
+
+# 仅输出到控制台（DEBUG 级别）
+setup_logger(level="DEBUG")
+
+# 同时保存到文件（可选）
+setup_logger(level="DEBUG", log_to_file=True, log_path="logs/x402-mock.log")
 ```
+
+#### `setup_logger` 参数说明
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `level` | str | `"INFO"` | 日志级别：`"DEBUG"`、`"INFO"`、`"WARNING"`、`"ERROR"` |
+| `log_to_file` | bool | `False` | 是否同时保存日志到本地文件 |
+| `log_path` | str | `"logs/x402-mock.log"` | 日志文件路径，目录不存在时自动创建 |
+
+> **说明**：日志文件自动按 10 MB 轮转，保留最近 7 天。
+
+## MCP 工具集成（供 AI Agent / 大模型调用）
+
+x402-mock 提供了原生的 [MCP（Model Context Protocol）](https://modelcontextprotocol.io/) 工具支持，让 LLM Agent（如 GitHub Copilot、Claude、GPT 等）可以直接调用，自动完成完整的 402 支付流程，无需手动编写支付代码。
+
+### 安装 MCP 依赖
+
+MCP 支持作为可选依赖提供，使用以下命令安装：
+
+```bash
+uv sync --extra mcp
+```
+
+### 可用的 MCP 工具
+
+| 工具名 | 角色 | 说明 |
+|--------|------|------|
+| `source_request` | Client | 访问受 402 保护的资源，自动完成签名与支付重试 |
+| `signature` | Client | 根据服务端返回的支付组件列表，生成签名的 permit |
+| `verify_and_settle` | Server | 验证 permit 签名并在链上结算（一步完成） |
+
+### Server 端 MCP 示例
+
+```python
+# example/mcp_server_example.py
+import os
+from mcp.server.fastmcp import FastMCP
+from x402_mock.adapters.adapters_hub import AdapterHub
+from x402_mock.adapters.evm.schemas import EVMPaymentComponent
+from x402_mock.mcp.facilitor_tools import FacilitorTools
+
+TOKEN_KEY = os.environ.get("X402_TOKEN_KEY", "dev-secret-change-me")
+EVM_PRIVATE_KEY = os.environ.get("EVM_PRIVATE_KEY")
+
+hub = AdapterHub(evm_private_key=EVM_PRIVATE_KEY)
+hub.register_payment_methods(
+    EVMPaymentComponent(
+        amount=0.8,
+        currency="USDC",
+        caip2="eip155:11155111",
+        token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+    ),
+    client_role=False,  # 服务端角色
+)
+
+mcp = FastMCP("x402")
+FacilitorTools(adapter_hub=hub, mcp=mcp, client_role=False)
+mcp.run()  # stdio 传输
+```
+
+### Client 端 MCP 示例
+
+```python
+# example/mcp_client_example.py
+import os
+from mcp.server.fastmcp import FastMCP
+from x402_mock.adapters.adapters_hub import AdapterHub
+from x402_mock.adapters.evm.schemas import EVMPaymentComponent
+from x402_mock.mcp.facilitor_tools import FacilitorTools
+
+EVM_PRIVATE_KEY = os.environ.get("EVM_PRIVATE_KEY")
+
+hub = AdapterHub(evm_private_key=EVM_PRIVATE_KEY)
+
+if EVM_PRIVATE_KEY:
+    hub.register_payment_methods(
+        EVMPaymentComponent(
+            amount=0.5,
+            currency="USDC",
+            caip2="eip155:11155111",
+            token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+        ),
+        client_role=True,  # 客户端角色
+    )
+
+mcp = FastMCP("x402-client")
+FacilitorTools(adapter_hub=hub, mcp=mcp, client_role=True)
+mcp.run()  # stdio 传输
+```
+
+### 在 VS Code（GitHub Copilot）中配置
+
+将以下配置添加到您项目的 `.vscode/mcp.json`（或用户级 MCP 配置文件）中，即可让 Copilot Agent 直接调用 x402-mock 的支付工具：
+
+```json
+{
+  "servers": {
+    "X402-Mock-Server": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "example/mcp_server_example.py"],
+      "env": {
+        "X402_TOKEN_KEY": "dev-secret-change-me",
+        "EVM_PRIVATE_KEY": "your_private_key_here",
+        "EVM_INFURA_KEY": "your_infura_key_here"
+      }
+    },
+    "X402-Mock-Client": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "example/mcp_client_example.py"],
+      "env": {
+        "EVM_PRIVATE_KEY": "your_private_key_here",
+        "EVM_INFURA_KEY": "your_infura_key_here"
+      }
+    }
+  }
+}
+```
+
+配置完成后，在 VS Code 的 Copilot Chat（Agent 模式）中，即可直接向大模型发出自然语言指令，例如：
+
+> 请用 `source_request` 工具访问 `http://localhost:8000/api/protected-data`
+
+Copilot 将自动调用 `source_request` 工具，完成签名、支付、重试全流程并返回结果。
+
+### `source_request` 工具参数
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `url` | str | 必填 | 目标资源 URL |
+| `method` | str | `"GET"` | HTTP 方法 |
+| `headers` | dict | `None` | 额外请求头 |
+| `timeout` | float | `30.0` | 请求超时时间（秒） |
+
+返回值为包含 `status_code`、`headers`、`body` 的字典。
 
 ## 下一步
 

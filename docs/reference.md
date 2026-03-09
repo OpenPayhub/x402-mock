@@ -218,3 +218,170 @@ The Engine module implements a sophisticated event-driven architecture for orche
 Developers can subscribe custom handlers to events using `event_bus.subscribe(EventType, handler)` to intercept events, log transactions, trigger webhooks, or implement custom business logic at any point in the payment flow.
 
 ::: x402_mock.engine
+
+## MCP
+
+**Model Context Protocol (MCP) Tool Integration**
+
+The MCP module exposes x402-mock's payment capabilities as [Model Context Protocol](https://modelcontextprotocol.io/) tools, enabling LLM Agents (such as GitHub Copilot, Claude, GPT, etc.) to call them directly and complete the full 402 payment interaction without writing any payment flow code.
+
+> **Install dependencies**: MCP support is provided as an optional extra. Install it with:
+> ```bash
+> uv sync --extra mcp
+> ```
+
+**Key Features:**
+- **Zero-Code Payments**: LLM Agents trigger the complete 402 payment flow via natural language instructions
+- **Role Separation**: Client-role tools (sign + request) and Server-role tools (verify + settle) are registered independently
+- **stdio Transport**: Process communication over standard I/O, compatible with all mainstream MCP hosts (VS Code, Claude Desktop, etc.)
+- **Automatic Payment Retry**: The `source_request` tool encapsulates the full 402 intercept → sign → retry flow
+- **Type Safety**: Tool arguments and return values are based on the Pydantic type system
+
+**Main Components:**
+- `FacilitorTools`: Core class that registers tools onto a `FastMCP` instance according to the configured role
+
+---
+
+### `FacilitorTools`
+
+**Constructor Parameters**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `adapter_hub` | `AdapterHub` | Yes | Adapter hub with payment methods already configured |
+| `mcp` | `FastMCP` | Yes | FastMCP server instance to register tools onto |
+| `client_role` | `bool` | No | `True` registers client-side tools; `False` (default) registers server-side tools |
+
+**Example**
+
+```python
+from mcp.server.fastmcp import FastMCP
+from x402_mock.adapters.adapters_hub import AdapterHub
+from x402_mock.mcp.facilitor_tools import FacilitorTools
+
+hub = AdapterHub(evm_private_key="0x...")
+mcp = FastMCP("x402")
+
+# Server role: register verify_and_settle tool
+FacilitorTools(adapter_hub=hub, mcp=mcp, client_role=False)
+
+# Client role: register signature + source_request tools
+# FacilitorTools(adapter_hub=hub, mcp=mcp, client_role=True)
+
+mcp.run()
+```
+
+---
+
+### MCP Tool Reference
+
+#### `source_request` (Client)
+
+Access a 402-protected resource with automatic signing and payment retry. This is the primary entry-point tool for LLM Agents.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `url` | `str` | required | Target resource URL |
+| `method` | `str` | `"GET"` | HTTP method |
+| `headers` | `dict \| None` | `None` | Additional request headers |
+| `timeout` | `float` | `30.0` | Request timeout in seconds |
+
+**Return Value**
+
+```python
+{
+    "status_code": 200,          # HTTP status code
+    "headers": { ... },          # Response headers dict
+    "body": "..."                # Response body string
+}
+```
+
+**Internal Flow**
+
+```
+Send request
+  └─> 402 received?
+        ├─ Yes → Parse payment components → Sign permit → Retry with token → Return final response
+        └─ No  → Return response directly
+```
+
+---
+
+#### `signature` (Client)
+
+Matches a compatible local payment method against the server's 402 payment component list and generates a signed permit, ready to be submitted to the `/token` endpoint.
+
+**Parameters**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `list_components` | `List[PaymentComponentTypes]` | Payment component list returned by the server in the 402 response |
+
+**Returns**: A signed `PermitTypes` object (`EVMTokenPermit` or the equivalent for other chains)
+
+---
+
+#### `verify_and_settle` (Server)
+
+Verifies a payment permit signature and settles on-chain in a single step, with no separate token issuance flow required.
+
+**Parameters**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `permit` | `PermitTypes` | Signed payment permit |
+
+**Return Value** (one of three)
+
+| Return Type | Meaning |
+|-------------|---------|
+| `SettleSuccessEvent` | Permit valid; on-chain settlement confirmed |
+| `SettleFailedEvent` | Permit valid; on-chain settlement failed |
+| `VerifyFailedEvent` | Permit signature invalid |
+
+**Event Flow**
+
+```
+RequestTokenEvent
+  └─> Verify signature
+        ├─ Success → VerifySuccessEvent → On-chain settlement
+        │               ├─ Success → SettleSuccessEvent
+        │               └─ Failure → SettleFailedEvent
+        └─ Failure → VerifyFailedEvent
+```
+
+---
+
+### MCP Configuration Example (VS Code / GitHub Copilot)
+
+Save the following as `.vscode/mcp.json` in your project root to use x402-mock payment tools directly in VS Code's Copilot Agent mode:
+
+```json
+{
+  "servers": {
+    "X402-Mock-Server": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "example/mcp_server_example.py"],
+      "env": {
+        "X402_TOKEN_KEY": "dev-secret-change-me",
+        "EVM_PRIVATE_KEY": "your_private_key_here",
+        "EVM_INFURA_KEY": "your_infura_key_here"
+      }
+    },
+    "X402-Mock-Client": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "example/mcp_client_example.py"],
+      "env": {
+        "EVM_PRIVATE_KEY": "your_private_key_here",
+        "EVM_INFURA_KEY": "your_infura_key_here"
+      }
+    }
+  }
+}
+```
+
+::: x402_mock.mcp

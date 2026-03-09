@@ -1,0 +1,23 @@
+{
+  "servers": {
+    "X402-Mock-Server": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "example/mcp_server_example.py"],
+      "env": {
+        "X402_TOKEN_KEY": "dev-secret-change-me",
+        "EVM_PRIVATE_KEY": "xxxx",
+        "EVM_INFURA_KEY": "xxxxx"
+      }
+    },
+    "X402-Mock-Client": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "example/mcp_client_example.py"],
+      "env": {
+        "EVM_PRIVATE_KEY": "0xxxx",
+        "EVM_INFURA_KEY": "xxxxx"
+      }
+    }
+  }
+}

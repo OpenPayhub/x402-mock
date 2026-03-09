@@ -540,12 +540,153 @@ payment = EVMPaymentComponent(
 
 ### Debug Mode
 
-Enable detailed logging:
+x402-mock uses [loguru](https://github.com/Delgan/loguru) as its logging library. By default, no logs are output (to avoid interfering with your application's own logs). Enable logging via `setup_logger`:
 
 ```python
-import logging
-logging.basicConfig(level=logging.DEBUG)
+from x402_mock.utils import setup_logger
+
+# Output to console only (DEBUG level)
+setup_logger(level="DEBUG")
+
+# Also save to file (optional)
+setup_logger(level="DEBUG", log_to_file=True, log_path="logs/x402-mock.log")
 ```
+
+#### `setup_logger` Parameter Description
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `level` | str | `"INFO"` | Log level: `"DEBUG"`, `"INFO"`, `"WARNING"`, `"ERROR"` |
+| `log_to_file` | bool | `False` | Whether to also save logs to a local file |
+| `log_path` | str | `"logs/x402-mock.log"` | Log file path; directory is created automatically if it doesn't exist |
+
+> **Note**: Log files are automatically rotated at 10 MB and retained for 7 days.
+
+## MCP Tool Integration (for AI Agents / LLM Calls)
+
+x402-mock provides native [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) tool support, allowing LLM Agents (such as GitHub Copilot, Claude, GPT, etc.) to call directly and automatically complete the full 402 payment flow — no manual payment code required.
+
+### Install MCP Dependencies
+
+MCP support is provided as an optional extra. Install it with:
+
+```bash
+uv sync --extra mcp
+```
+
+### Available MCP Tools
+
+| Tool | Role | Description |
+|------|------|-------------|
+| `source_request` | Client | Access a 402-protected resource with automatic signing and payment retry |
+| `signature` | Client | Generate a signed permit from the payment component list returned by the server |
+| `verify_and_settle` | Server | Verify a permit signature and settle on-chain in one step |
+
+### Server-side MCP Example
+
+```python
+# example/mcp_server_example.py
+import os
+from mcp.server.fastmcp import FastMCP
+from x402_mock.adapters.adapters_hub import AdapterHub
+from x402_mock.adapters.evm.schemas import EVMPaymentComponent
+from x402_mock.mcp.facilitor_tools import FacilitorTools
+
+TOKEN_KEY = os.environ.get("X402_TOKEN_KEY", "dev-secret-change-me")
+EVM_PRIVATE_KEY = os.environ.get("EVM_PRIVATE_KEY")
+
+hub = AdapterHub(evm_private_key=EVM_PRIVATE_KEY)
+hub.register_payment_methods(
+    EVMPaymentComponent(
+        amount=0.8,
+        currency="USDC",
+        caip2="eip155:11155111",
+        token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+    ),
+    client_role=False,  # server role
+)
+
+mcp = FastMCP("x402")
+FacilitorTools(adapter_hub=hub, mcp=mcp, client_role=False)
+mcp.run()  # stdio transport
+```
+
+### Client-side MCP Example
+
+```python
+# example/mcp_client_example.py
+import os
+from mcp.server.fastmcp import FastMCP
+from x402_mock.adapters.adapters_hub import AdapterHub
+from x402_mock.adapters.evm.schemas import EVMPaymentComponent
+from x402_mock.mcp.facilitor_tools import FacilitorTools
+
+EVM_PRIVATE_KEY = os.environ.get("EVM_PRIVATE_KEY")
+
+hub = AdapterHub(evm_private_key=EVM_PRIVATE_KEY)
+
+if EVM_PRIVATE_KEY:
+    hub.register_payment_methods(
+        EVMPaymentComponent(
+            amount=0.5,
+            currency="USDC",
+            caip2="eip155:11155111",
+            token="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+        ),
+        client_role=True,  # client role
+    )
+
+mcp = FastMCP("x402-client")
+FacilitorTools(adapter_hub=hub, mcp=mcp, client_role=True)
+mcp.run()  # stdio transport
+```
+
+### Configuration in VS Code (GitHub Copilot)
+
+Add the following to your project's `.vscode/mcp.json` (or the user-level MCP config file) to allow Copilot Agent to call x402-mock payment tools directly:
+
+```json
+{
+  "servers": {
+    "X402-Mock-Server": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "example/mcp_server_example.py"],
+      "env": {
+        "X402_TOKEN_KEY": "dev-secret-change-me",
+        "EVM_PRIVATE_KEY": "your_private_key_here",
+        "EVM_INFURA_KEY": "your_infura_key_here"
+      }
+    },
+    "X402-Mock-Client": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "example/mcp_client_example.py"],
+      "env": {
+        "EVM_PRIVATE_KEY": "your_private_key_here",
+        "EVM_INFURA_KEY": "your_infura_key_here"
+      }
+    }
+  }
+}
+```
+
+Once configured, open Copilot Chat in VS Code (Agent mode) and issue natural language instructions directly, for example:
+
+> Please use the `source_request` tool to access `http://localhost:8000/api/protected-data`
+
+Copilot will automatically call the `source_request` tool, complete the signing, payment, and retry flow, and return the result.
+
+### `source_request` Tool Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `url` | str | required | Target resource URL |
+| `method` | str | `"GET"` | HTTP method |
+| `headers` | dict | `None` | Additional request headers |
+| `timeout` | float | `30.0` | Request timeout in seconds |
+
+Returns a dict containing `status_code`, `headers`, and `body`.
 
 ## Next Steps
 

@@ -59,6 +59,7 @@ x402-mock 是一个专为 AI Agent 及服务端开发者设计的开源收款集
 * ✅ 链上 USDC 转账，tx_hash 可查
 * ✅ 异步链上结算，不阻塞业务
 * ✅ 覆盖 EVM 链，理论上支持所有代币的签名（Ethereum、Polygon、Arbitrum、Optimism 等）
+* ✅ MCP 工具支持，可直接供大模型（LLM Agent）调用，自动完成 402 支付全流程
 * 🚀 生产级可运行实现
 
 ---
@@ -68,7 +69,7 @@ x402-mock 是一个专为 AI Agent 及服务端开发者设计的开源收款集
 * [ ] 支持 智能合约钱包地址收款
 * [ ] 支持 EIP-6492（未部署合约的签名验证）
 * [ ] 支持 SVM（Solana Virtual Machine）及 Solana 生态
-* [ ] 配合 大模型调用
+* ✅ 配合 大模型调用（已完成 MCP 工具集成）
 
 ---
 

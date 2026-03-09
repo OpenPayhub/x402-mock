@@ -59,6 +59,7 @@ Once testing passes, you can switch to mainnet for production deployment.
 * ✅ On-chain USDC transfer with tx_hash available
 * ✅ Asynchronous on-chain settlement, non-blocking
 * ✅ EVM chain coverage, theoretically supports signatures for all tokens (Ethereum, Polygon, Arbitrum, Optimism, etc.)
+* ✅ MCP tool support — LLM Agents can call directly to complete the full 402 payment flow automatically
 * 🚀 Production-grade runnable implementation
 
 ---
@@ -68,7 +69,7 @@ Once testing passes, you can switch to mainnet for production deployment.
 * [ ] Support smart contract wallet recipients
 * [ ] Support EIP-6492 (undeployed contract signature verification)
 * [ ] Support SVM (Solana Virtual Machine) and Solana ecosystem
-* [ ] Integration with large language model calls
+* ✅ Integration with large language model calls (MCP tool integration complete)
 
 ---
 

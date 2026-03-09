@@ -1,0 +1,2278 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="HTTP 402 payment workflow implementation">
+      
+      
+        <meta name="author" content="Gengxing Pan">
+      
+      
+      
+        <link rel="prev" href="../">
+      
+      
+        <link rel="next" href="../reference/">
+      
+      
+        
+          <link rel="alternate" href="../../quick_start/" hreflang="en">
+        
+          <link rel="alternate" href="./" hreflang="zh">
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Quick Start - x402-mock Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../" title="x402-mock Documentation" class="md-header__button md-logo" aria-label="x402-mock Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            x402-mock Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Quick Start
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="选择当前语言">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="../../quick_start/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="zh" class="md-select__link">
+              简体中文
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/OpenPayhub/x402-mock" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    OpenPayhub/x402-mock
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../" title="x402-mock Documentation" class="md-nav__button md-logo" aria-label="x402-mock Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    x402-mock Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/OpenPayhub/x402-mock" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    OpenPayhub/x402-mock
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        安装
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="安装">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        环境配置
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        核心概念
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="核心概念">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        支付流程概述
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#402" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        状态码 402 的职责分离
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server（收款方）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Server（收款方）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#server_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        创建 Server 实例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        添加支付方式
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        保护 API 端点
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        事件处理
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#client" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client（付款方）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Client（付款方）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#client_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        创建 Client 实例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        支付流程自动化
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        完整示例
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="完整示例">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#server_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server 端完整示例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#client_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client 端完整示例
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        高级配置
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="高级配置">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rpc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        自定义 RPC 节点
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        多链支持
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adapterhub" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        核心组件 AdapterHub
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="核心组件 AdapterHub">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        核心方法
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        代码示例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        未来规划
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        链上信息获取工具
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="链上信息获取工具">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        导入工具方法
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        方法说明
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        自动填充支付组件
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_19" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        最佳实践
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        故障排除
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="故障排除">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        常见问题
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_22" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        调试模式
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-ai-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP 工具集成（供 AI Agent / 大模型调用）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MCP 工具集成（供 AI Agent / 大模型调用）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        安装 MCP 依赖
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mcp_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        可用的 MCP 工具
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#server-mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server 端 MCP 示例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#client-mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client 端 MCP 示例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vs-codegithub-copilot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        在 VS Code（GitHub Copilot）中配置
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#source_request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        source_request 工具参数
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        下一步
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../evm_docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Relatived Docs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        安装
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="安装">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        环境配置
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        核心概念
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="核心概念">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        支付流程概述
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#402" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        状态码 402 的职责分离
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server（收款方）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Server（收款方）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#server_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        创建 Server 实例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        添加支付方式
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        保护 API 端点
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        事件处理
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#client" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client（付款方）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Client（付款方）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#client_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        创建 Client 实例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        支付流程自动化
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        完整示例
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="完整示例">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#server_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server 端完整示例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#client_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client 端完整示例
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        高级配置
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="高级配置">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rpc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        自定义 RPC 节点
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        多链支持
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adapterhub" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        核心组件 AdapterHub
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="核心组件 AdapterHub">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        核心方法
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        代码示例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        未来规划
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        链上信息获取工具
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="链上信息获取工具">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        导入工具方法
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        方法说明
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        自动填充支付组件
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_19" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        最佳实践
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        故障排除
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="故障排除">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        常见问题
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_22" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        调试模式
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-ai-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP 工具集成（供 AI Agent / 大模型调用）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MCP 工具集成（供 AI Agent / 大模型调用）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        安装 MCP 依赖
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mcp_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        可用的 MCP 工具
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#server-mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server 端 MCP 示例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#client-mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client 端 MCP 示例
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vs-codegithub-copilot" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        在 VS Code（GitHub Copilot）中配置
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#source_request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        source_request 工具参数
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        下一步
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="_1">快速开始</h1>
+<p>x402-mock 是一个基于 HTTP 402 状态码的支付协议实现，支持 EVM 区块链上的代币支付。本指南将帮助您快速上手。</p>
+<h2 id="_2">安装</h2>
+<p>本项目使用 <code>uv</code> 作为包管理工具。</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>add<span class="w"> </span>x402-mock
+uv<span class="w"> </span>sync
+</code></pre></div>
+<h3 id="_3">环境配置</h3>
+<p>在项目根目录创建 <code>.env</code> 文件，配置您的私钥和 RPC 服务密钥：</p>
+<div class="highlight"><pre><span></span><code># 必需：EVM 私钥（用于签名和收款）
+EVM_PRIVATE_KEY=your_private_key_here
+
+# 可选：Infura 或 Alchemy 的 API 密钥（用于访问区块链网络）
+EVM_INFURA_KEY=your_infura_key_here
+EVM_ALCHEMY_KEY=your_alchemy_key_here
+</code></pre></div>
+<h2 id="_4">核心概念</h2>
+<h3 id="_5">支付流程概述</h3>
+<p>x402-mock 实现了职责分离的支付流程，类似于电影院的售票和验票系统：</p>
+<ol>
+<li><strong>Server（收款方）</strong>：提供服务并接受支付，类似于电影院</li>
+<li><strong>Client（付款方）</strong>：请求服务并完成支付，类似于观众</li>
+<li><strong>支付流程</strong>：</li>
+<li>Client 请求受保护的资源</li>
+<li>Server 验证 Client 的访问令牌（类似验票）</li>
+<li>如果令牌无效，返回 402 状态码 + 支付信息（类似指引去售票处）</li>
+<li>Client 根据支付信息完成签名支付（类似买票）</li>
+<li>Client 获取访问令牌后重新请求资源（类似持票入场）</li>
+</ol>
+<h3 id="402">状态码 402 的职责分离</h3>
+<p>HTTP 402 "Payment Required" 状态码在本项目中实现了职责分离：
+- <strong>Server 端</strong>：只负责验证访问令牌的有效性，不处理支付逻辑
+- <strong>支付验证</strong>：由独立的 <code>/token</code> 端点处理，接收支付签名并发放访问令牌
+- <strong>Client 端</strong>：自动处理 402 响应，完成支付流程后重试请求</p>
+<p>这种设计使得支付逻辑与业务逻辑解耦，提高了系统的可维护性和安全性。</p>
+<h2 id="server">Server（收款方）</h2>
+<p>Server 是提供服务并接受支付的一方。主要职责包括：
+1. 定义接受的支付方式（链、网络、代币）
+2. 验证支付签名的真实性和有效性
+3. 完成链上转账结算
+4. 发放访问令牌</p>
+<h3 id="server_1">创建 Server 实例</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.servers</span><span class="w"> </span><span class="kn">import</span> <span class="n">Http402Server</span><span class="p">,</span> <span class="n">create_private_key</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.adapters.evm.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">EVMPaymentComponent</span>
+
+<span class="c1"># 生成访问令牌签名密钥</span>
+<span class="n">token_key</span> <span class="o">=</span> <span class="n">create_private_key</span><span class="p">()</span>
+
+<span class="c1"># 创建 Server 实例（继承自 FastAPI）</span>
+<span class="n">app</span> <span class="o">=</span> <span class="n">Http402Server</span><span class="p">(</span>
+    <span class="n">token_key</span><span class="o">=</span><span class="n">token_key</span><span class="p">,</span>      <span class="c1"># 访问令牌签名密钥</span>
+    <span class="n">token_expires_in</span><span class="o">=</span><span class="mi">300</span>      <span class="c1"># 令牌有效期（秒）</span>
+<span class="p">)</span>
+</code></pre></div>
+<h4 id="http402server">Http402Server 参数说明</h4>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>类型</th>
+<th>必填</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>token_key</code></td>
+<td>str</td>
+<td>是</td>
+<td>访问令牌签名密钥，可使用 <code>create_private_key()</code> 生成</td>
+</tr>
+<tr>
+<td><code>token_expires_in</code></td>
+<td>int</td>
+<td>否</td>
+<td>访问令牌有效期（秒），默认 3600</td>
+</tr>
+<tr>
+<td><code>enable_auto_settlement</code></td>
+<td>bool</td>
+<td>否</td>
+<td>是否自动结算支付，默认 True</td>
+</tr>
+<tr>
+<td><code>token_endpoint</code></td>
+<td>str</td>
+<td>否</td>
+<td>令牌交换端点路径，默认 "/token"</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_6">添加支付方式</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 添加 EVM 支付方式</span>
+<span class="n">app</span><span class="o">.</span><span class="n">add_payment_method</span><span class="p">(</span>
+    <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+        <span class="n">amount</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>          <span class="c1"># 支付金额（人类可读单位）</span>
+        <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span><span class="p">,</span>     <span class="c1"># 代币符号</span>
+        <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:11155111&quot;</span><span class="p">,</span>  <span class="c1"># CAIP-2 链标识符</span>
+        <span class="n">token</span><span class="o">=</span><span class="s2">&quot;0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238&quot;</span>  <span class="c1"># 代币合约地址</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+<h4 id="evmpaymentcomponent">EVMPaymentComponent 参数说明</h4>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>类型</th>
+<th>必填</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>amount</code></td>
+<td>float</td>
+<td>是</td>
+<td>支付金额（人类可读单位，如 0.5 USDC）</td>
+</tr>
+<tr>
+<td><code>currency</code></td>
+<td>str</td>
+<td>是</td>
+<td>代币符号（如 "USDC", "USDT", "ETH"）</td>
+</tr>
+<tr>
+<td><code>caip2</code></td>
+<td>str</td>
+<td>是</td>
+<td>CAIP-2 链标识符（格式：<code>eip155:&lt;chain_id&gt;</code>）</td>
+</tr>
+<tr>
+<td><code>token</code></td>
+<td>str</td>
+<td>建议</td>
+<td>代币合约地址（0x 开头，42 字符）</td>
+</tr>
+<tr>
+<td><code>pay_to</code></td>
+<td>str</td>
+<td>否</td>
+<td>收款地址，默认使用环境变量私钥对应的地址</td>
+</tr>
+<tr>
+<td><code>rpc_url</code></td>
+<td>str</td>
+<td>否</td>
+<td>RPC 节点 URL，默认使用公共节点或根据环境变量自动配置</td>
+</tr>
+<tr>
+<td><code>token_name</code></td>
+<td>str</td>
+<td>否</td>
+<td>代币名称，自动获取时可省略</td>
+</tr>
+<tr>
+<td><code>token_decimals</code></td>
+<td>int/str</td>
+<td>否</td>
+<td>代币精度，自动获取时可省略</td>
+</tr>
+<tr>
+<td><code>token_version</code></td>
+<td>int/str</td>
+<td>否</td>
+<td>代币版本，自动获取时可省略</td>
+</tr>
+</tbody>
+</table>
+<p><strong>注意</strong>：<code>token</code>、<code>token_name</code>、<code>token_decimals</code>、<code>token_version</code> 如未提供，系统会根据 <code>caip2</code> 和 <code>currency</code> 自动查询。</p>
+<h3 id="api">保护 API 端点</h3>
+<p>使用 <code>@app.payment_required</code> 装饰器保护需要支付的端点：</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/api/protected-data&quot;</span><span class="p">)</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">payment_required</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_protected_data</span><span class="p">(</span><span class="n">payload</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;需要支付才能访问的端点&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="s2">&quot;Payment verified successfully&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;user_address&quot;</span><span class="p">:</span> <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;address&quot;</span><span class="p">]</span>
+    <span class="p">}</span>
+</code></pre></div>
+<h3 id="_7">事件处理</h3>
+<p>Server 提供了事件系统，您可以监听支付流程中的各种事件：</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.engine.events</span><span class="w"> </span><span class="kn">import</span> <span class="n">SettleSuccessEvent</span>
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">hook</span><span class="p">(</span><span class="n">SettleSuccessEvent</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_settle_success</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">deps</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;支付成功时的处理逻辑&quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ 支付成功: </span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">settlement_result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="c1"># 可以在这里记录日志、发送通知等</span>
+</code></pre></div>
+<p>可用的事件类型：
+- <code>RequestInitEvent</code>: 请求初始化
+- <code>RequestTokenEvent</code>: 令牌请求
+- <code>TokenIssuedEvent</code>: 令牌发放
+- <code>VerifyFailedEvent</code>: 验证失败
+- <code>AuthorizationSuccessEvent</code>: 授权成功
+- <code>Http402PaymentEvent</code>: 需要支付
+- <code>SettleSuccessEvent</code>: 结算成功</p>
+<h2 id="client">Client（付款方）</h2>
+<p>Client 是请求服务并完成支付的一方。主要职责包括：
+1. 注册支持的支付方式
+2. 自动处理 402 响应
+3. 生成支付签名
+4. 交换签名获取访问令牌</p>
+<h3 id="client_1">创建 Client 实例</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.clients.http_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Http402Client</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.adapters.evm.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">EVMPaymentComponent</span>
+
+<span class="k">async</span> <span class="k">with</span> <span class="n">Http402Client</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="c1"># 注册支付方式</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">add_payment_method</span><span class="p">(</span>
+        <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+            <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:11155111&quot;</span><span class="p">,</span>
+            <span class="n">amount</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>          <span class="c1"># 最大支付金额限制</span>
+            <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span><span class="p">,</span>
+            <span class="n">token</span><span class="o">=</span><span class="s2">&quot;0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238&quot;</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="c1"># 发送请求（自动处理 402 支付流程）</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://localhost:8000/api/protected-data&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">())</span>
+</code></pre></div>
+<h4 id="client-evmpaymentcomponent">Client 端 EVMPaymentComponent 的特殊说明</h4>
+<p>在 Client 端，<code>amount</code> 参数表示<strong>最大支付金额限制</strong>。如果 Server 要求的金额超过此限制，Client 将拒绝签名支付。</p>
+<h3 id="_8">支付流程自动化</h3>
+<p><code>Http402Client</code> 继承自 <code>httpx.AsyncClient</code>，完全兼容其所有方法。当收到 402 响应时，Client 会自动：</p>
+<ol>
+<li>解析支付要求</li>
+<li>匹配已注册的支付方式</li>
+<li>生成支付签名</li>
+<li>向 <code>/token</code> 端点交换访问令牌</li>
+<li>使用新令牌重试原始请求</li>
+</ol>
+<p>整个过程对开发者透明，只需正常使用 HTTP 客户端即可。</p>
+<h2 id="_9">完整示例</h2>
+<h3 id="server_2">Server 端完整示例</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.servers</span><span class="w"> </span><span class="kn">import</span> <span class="n">Http402Server</span><span class="p">,</span> <span class="n">create_private_key</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.adapters.evm.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">EVMPaymentComponent</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.engine.events</span><span class="w"> </span><span class="kn">import</span> <span class="n">SettleSuccessEvent</span>
+
+<span class="c1"># 创建 Server</span>
+<span class="n">token_key</span> <span class="o">=</span> <span class="n">create_private_key</span><span class="p">()</span>
+<span class="n">app</span> <span class="o">=</span> <span class="n">Http402Server</span><span class="p">(</span><span class="n">token_key</span><span class="o">=</span><span class="n">token_key</span><span class="p">,</span> <span class="n">token_expires_in</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+
+<span class="c1"># 添加支付方式</span>
+<span class="n">app</span><span class="o">.</span><span class="n">add_payment_method</span><span class="p">(</span>
+    <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+        <span class="n">amount</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+        <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span><span class="p">,</span>
+        <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:11155111&quot;</span><span class="p">,</span>
+        <span class="n">token</span><span class="o">=</span><span class="s2">&quot;0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238&quot;</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># 支付成功事件处理</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">hook</span><span class="p">(</span><span class="n">SettleSuccessEvent</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">log_payment_success</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">deps</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;💰 收到支付: </span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">settlement_result</span><span class="o">.</span><span class="n">authorized_amount</span><span class="si">}</span><span class="s2"> USDC&quot;</span><span class="p">)</span>
+
+<span class="c1"># 受保护的 API 端点</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/api/premium-content&quot;</span><span class="p">)</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">payment_required</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_premium_content</span><span class="p">(</span><span class="n">payload</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;这是付费内容&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;paid_by&quot;</span><span class="p">:</span> <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;address&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;timestamp&quot;</span><span class="p">)</span>
+    <span class="p">}</span>
+
+<span class="c1"># 运行 Server（使用 uvicorn）</span>
+<span class="c1"># uvicorn server:app --host 0.0.0.0 --port 8000</span>
+</code></pre></div>
+<h3 id="client_2">Client 端完整示例</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.clients.http_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Http402Client</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.adapters.evm.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">EVMPaymentComponent</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">Http402Client</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+        <span class="c1"># 注册支付方式（支持多个）</span>
+        <span class="n">client</span><span class="o">.</span><span class="n">add_payment_method</span><span class="p">(</span>
+            <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+                <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:11155111&quot;</span><span class="p">,</span>
+                <span class="n">amount</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>      <span class="c1"># 最多支付 1.0 USDC</span>
+                <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span><span class="p">,</span>
+                <span class="n">token</span><span class="o">=</span><span class="s2">&quot;0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238&quot;</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 请求受保护的内容（自动处理支付）</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://localhost:8000/api/premium-content&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ 获取到内容: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;content&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   支付方: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;paid_by&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ 请求失败: </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</code></pre></div>
+<h2 id="_10">高级配置</h2>
+<h3 id="rpc">自定义 RPC 节点</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Server 端指定 RPC 节点</span>
+<span class="n">app</span><span class="o">.</span><span class="n">add_payment_method</span><span class="p">(</span>
+    <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+        <span class="n">amount</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+        <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span><span class="p">,</span>
+        <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">,</span>  <span class="c1"># Ethereum 主网</span>
+        <span class="n">token</span><span class="o">=</span><span class="s2">&quot;0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48&quot;</span><span class="p">,</span>  <span class="c1"># USDC</span>
+        <span class="n">rpc_url</span><span class="o">=</span><span class="s2">&quot;https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY&quot;</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 id="_11">多链支持</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 支持多个链的支付方式</span>
+<span class="n">app</span><span class="o">.</span><span class="n">add_payment_method</span><span class="p">(</span>
+    <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+        <span class="n">amount</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+        <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;ETH&quot;</span><span class="p">,</span>
+        <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">,</span>  <span class="c1"># Ethereum 主网</span>
+        <span class="n">token</span><span class="o">=</span><span class="kc">None</span>  <span class="c1"># 使用原生代币</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">app</span><span class="o">.</span><span class="n">add_payment_method</span><span class="p">(</span>
+    <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+        <span class="n">amount</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span><span class="p">,</span>
+        <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:42161&quot;</span><span class="p">,</span>  <span class="c1"># Arbitrum</span>
+        <span class="n">token</span><span class="o">=</span><span class="s2">&quot;0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8&quot;</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+<h2 id="adapterhub">核心组件 AdapterHub</h2>
+<p>AdapterHub 是统一的区块链适配器网关，为用户不依赖外部 facilitors，自身完成验证签名和转账操作的工具。支持 EVM 区块链（SVM 开发中）。</p>
+<h3 id="_12">核心方法</h3>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>功能</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>register_payment_methods()</code></td>
+<td>注册支付方式（<code>client_role=False</code> 为 Server 角色，<code>True</code> 为 Client 角色）</td>
+</tr>
+<tr>
+<td><code>signature()</code></td>
+<td>生成支付签名（Client 调用）</td>
+</tr>
+<tr>
+<td><code>verify_signature()</code></td>
+<td>验证签名（Server 调用）</td>
+</tr>
+<tr>
+<td><code>settle()</code></td>
+<td>执行链上转账（Server 调用）</td>
+</tr>
+<tr>
+<td><code>initialize()</code></td>
+<td>客户端初始化（如 Permit2 授权）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_13">代码示例</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">AdapterHub</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.adapters.evm.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">EVMPaymentComponent</span>
+
+<span class="c1"># 1. 初始化（需要 EVM 私钥）</span>
+<span class="n">hub</span> <span class="o">=</span> <span class="n">AdapterHub</span><span class="p">(</span>
+    <span class="n">evm_private_key</span><span class="o">=</span><span class="s2">&quot;0xyour_private_key&quot;</span><span class="p">,</span>  <span class="c1"># 或使用环境变量 EVM_PRIVATE_KEY</span>
+    <span class="n">request_timeout</span><span class="o">=</span><span class="mi">60</span>
+<span class="p">)</span>
+
+<span class="c1"># 2. 注册支付方式</span>
+<span class="n">hub</span><span class="o">.</span><span class="n">register_payment_methods</span><span class="p">(</span>
+    <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+        <span class="n">amount</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span><span class="p">,</span>
+        <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:11155111&quot;</span><span class="p">,</span>
+        <span class="n">token</span><span class="o">=</span><span class="s2">&quot;0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238&quot;</span>
+    <span class="p">),</span>
+    <span class="n">client_role</span><span class="o">=</span><span class="kc">True</span>  <span class="c1"># Client 角色设为 True</span>
+<span class="p">)</span>
+
+<span class="c1"># 3. Client 生成签名</span>
+<span class="n">permit</span> <span class="o">=</span> <span class="k">await</span> <span class="n">hub</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">remote_components</span><span class="p">)</span>
+
+<span class="c1"># 4. Server 验证签名</span>
+<span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">hub</span><span class="o">.</span><span class="n">verify_signature</span><span class="p">(</span><span class="n">permit</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">is_valid</span><span class="p">():</span>
+    <span class="c1"># 5. Server 执行转账</span>
+    <span class="n">confirmation</span> <span class="o">=</span> <span class="k">await</span> <span class="n">hub</span><span class="o">.</span><span class="n">settle</span><span class="p">(</span><span class="n">permit</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="_14">未来规划</h3>
+<ul>
+<li><strong>bundle_settle</strong>：批量转账，减少 Gas 费用</li>
+<li><strong>SVM 支持</strong>：Solana 适配器（开发中）</li>
+</ul>
+<h2 id="_15">链上信息获取工具</h2>
+<p>在配置支付方式时，您可能需要获取链上的各种信息，如 RPC 节点地址、代币合约地址、代币精度和版本等。x402-mock 提供了一系列工具方法来简化这些信息的获取。</p>
+<h3 id="_16">导入工具方法</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.adapters.evm.constants</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">EvmChainInfoFromEthereumLists</span><span class="p">,</span>
+    <span class="n">EvmPublicRpcFromChainList</span><span class="p">,</span>
+    <span class="n">EvmTokenListFromUniswap</span><span class="p">,</span>
+    <span class="n">fetch_erc20_name_version_decimals</span><span class="p">,</span>
+    <span class="n">get_rpc_key_from_env</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 id="_17">方法说明</h3>
+<h4 id="1-evmchaininfofromethereumlists">1. <code>EvmChainInfoFromEthereumLists</code></h4>
+<p><strong>功能</strong>：从 ethereum-lists 仓库获取 EVM 链的详细配置信息。</p>
+<p><strong>主要用途</strong>：
+- 获取链的 Infura/Alchemy RPC URL（包含 API 密钥占位符）
+- 获取公共 RPC 节点列表
+- 获取链的基本信息（名称、浏览器地址等）</p>
+<p><strong>示例用法</strong>：
+<div class="highlight"><pre><span></span><code><span class="n">chain_info</span> <span class="o">=</span> <span class="n">EvmChainInfoFromEthereumLists</span><span class="p">()</span>
+
+<span class="c1"># 获取 Infura RPC URL（需要填充 API 密钥）</span>
+<span class="n">infura_url</span> <span class="o">=</span> <span class="n">chain_info</span><span class="o">.</span><span class="n">get_infura_rpc_url</span><span class="p">(</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">)</span>
+<span class="c1"># 返回类似：https://mainnet.infura.io/v3/{RPC_KEYS}</span>
+
+<span class="c1"># 获取 Alchemy RPC URL（需要填充 API 密钥）</span>
+<span class="n">alchemy_url</span> <span class="o">=</span> <span class="n">chain_info</span><span class="o">.</span><span class="n">get_alchemy_rpc_url</span><span class="p">(</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">)</span>
+<span class="c1"># 返回类似：https://eth-mainnet.g.alchemy.com/v2/{RPC_KEYS}</span>
+
+<span class="c1"># 获取公共 RPC 节点列表</span>
+<span class="n">public_rpcs</span> <span class="o">=</span> <span class="n">chain_info</span><span class="o">.</span><span class="n">get_public_rpc_urls</span><span class="p">(</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">)</span>
+<span class="c1"># 返回：[&quot;https://api.mycryptoapi.com/eth&quot;, ...]</span>
+</code></pre></div></p>
+<h4 id="2-evmpublicrpcfromchainlist">2. <code>EvmPublicRpcFromChainList</code></h4>
+<p><strong>功能</strong>：从 Chainlist.org 获取公共 RPC 节点信息。</p>
+<p><strong>主要用途</strong>：
+- 获取无跟踪或有限跟踪的公共 RPC 节点
+- 根据隐私偏好选择 RPC 节点
+- 支持 HTTPS 和 WebSocket 协议</p>
+<p><strong>示例用法</strong>：
+<div class="highlight"><pre><span></span><code><span class="n">rpc_finder</span> <span class="o">=</span> <span class="n">EvmPublicRpcFromChainList</span><span class="p">()</span>
+
+<span class="c1"># 获取无跟踪的公共 RPC 节点</span>
+<span class="n">public_rpc</span> <span class="o">=</span> <span class="n">rpc_finder</span><span class="o">.</span><span class="n">pick_public_rpc</span><span class="p">(</span>
+    <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">,</span>
+    <span class="n">start_with</span><span class="o">=</span><span class="s2">&quot;https://&quot;</span><span class="p">,</span>
+    <span class="n">tracking_type</span><span class="o">=</span><span class="s2">&quot;none&quot;</span>
+<span class="p">)</span>
+<span class="c1"># 返回类似：https://rpc.ankr.com/eth</span>
+
+<span class="c1"># 获取特定链的所有公共 RPC 信息</span>
+<span class="n">chain_rpcs</span> <span class="o">=</span> <span class="n">rpc_finder</span><span class="o">.</span><span class="n">get_specific_chain_public_rpcs</span><span class="p">(</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">)</span>
+</code></pre></div></p>
+<h4 id="3-evmtokenlistfromuniswap">3. <code>EvmTokenListFromUniswap</code></h4>
+<p><strong>功能</strong>：从 Uniswap 官方代币列表获取代币信息。</p>
+<p><strong>主要用途</strong>：
+- 获取代币的合约地址和精度
+- 支持多链代币查询
+- 自动缓存数据，减少网络请求</p>
+<p><strong>示例用法</strong>：
+<div class="highlight"><pre><span></span><code><span class="n">token_finder</span> <span class="o">=</span> <span class="n">EvmTokenListFromUniswap</span><span class="p">()</span>
+
+<span class="c1"># 获取代币地址和精度</span>
+<span class="n">address</span><span class="p">,</span> <span class="n">decimals</span> <span class="o">=</span> <span class="n">token_finder</span><span class="o">.</span><span class="n">get_token_address_and_decimals</span><span class="p">(</span>
+    <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">,</span>
+    <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span>
+<span class="p">)</span>
+<span class="c1"># 返回：(&quot;0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48&quot;, 6)</span>
+</code></pre></div></p>
+<h4 id="4-fetch_erc20_name_version_decimals">4. <code>fetch_erc20_name_version_decimals</code></h4>
+<p><strong>功能</strong>：直接从链上 RPC 查询代币的详细信息。</p>
+<p><strong>主要用途</strong>：
+- 查询代币的 <code>name()</code>、<code>version()</code> 和 <code>decimals()</code> 函数
+- 验证代币合约的完整信息
+- 获取最新的链上数据</p>
+<p><strong>示例用法</strong>：
+<div class="highlight"><pre><span></span><code><span class="c1"># 从链上查询代币信息</span>
+<span class="n">name</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">decimals</span> <span class="o">=</span> <span class="n">fetch_erc20_name_version_decimals</span><span class="p">(</span>
+    <span class="n">rpc_url</span><span class="o">=</span><span class="s2">&quot;https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY&quot;</span><span class="p">,</span>
+    <span class="n">token_address</span><span class="o">=</span><span class="s2">&quot;0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48&quot;</span>
+<span class="p">)</span>
+<span class="c1"># 返回：(&quot;USD Coin&quot;, &quot;2&quot;, 6)</span>
+</code></pre></div></p>
+<h4 id="5-get_rpc_key_from_env">5. <code>get_rpc_key_from_env</code></h4>
+<p><strong>功能</strong>：从环境变量获取 RPC 服务商的 API 密钥。</p>
+<p><strong>主要用途</strong>：
+- 安全地获取 Infura 或 Alchemy API 密钥
+- 支持自定义环境变量名称
+- 返回 <code>None</code> 时表示使用公共节点</p>
+<p><strong>示例用法</strong>：
+<div class="highlight"><pre><span></span><code><span class="c1"># 获取 Infura 密钥（默认）</span>
+<span class="n">infura_key</span> <span class="o">=</span> <span class="n">get_rpc_key_from_env</span><span class="p">(</span><span class="s2">&quot;EVM_INFURA_KEY&quot;</span><span class="p">)</span>
+
+<span class="c1"># 获取 Alchemy 密钥</span>
+<span class="n">alchemy_key</span> <span class="o">=</span> <span class="n">get_rpc_key_from_env</span><span class="p">(</span><span class="s2">&quot;EVM_ALCHEMY_KEY&quot;</span><span class="p">)</span>
+
+<span class="c1"># 使用密钥构建 RPC URL</span>
+<span class="k">if</span> <span class="n">infura_key</span><span class="p">:</span>
+    <span class="n">rpc_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;https://mainnet.infura.io/v3/</span><span class="si">{</span><span class="n">infura_key</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="c1"># 使用公共节点</span>
+    <span class="n">rpc_finder</span> <span class="o">=</span> <span class="n">EvmPublicRpcFromChainList</span><span class="p">()</span>
+    <span class="n">rpc_url</span> <span class="o">=</span> <span class="n">rpc_finder</span><span class="o">.</span><span class="n">pick_public_rpc</span><span class="p">(</span><span class="s2">&quot;eip155:1&quot;</span><span class="p">)</span>
+</code></pre></div></p>
+<h3 id="_18">自动填充支付组件</h3>
+<p>这些工具方法通常被 <code>EVMPaymentComponent</code> 内部使用，当您未提供完整信息时自动填充：</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 只需提供基本信息，系统会自动查询缺失数据</span>
+<span class="n">payment</span> <span class="o">=</span> <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+    <span class="n">amount</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+    <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span><span class="p">,</span>
+    <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:1&quot;</span>
+    <span class="c1"># token、token_name、token_decimals、token_version 会自动查询</span>
+<span class="p">)</span>
+
+<span class="c1"># 系统内部会：</span>
+<span class="c1"># 1. 使用 EvmTokenListFromUniswap 获取 USDC 合约地址和精度</span>
+<span class="c1"># 2. 使用 fetch_erc20_name_version_decimals 获取代币名称和版本</span>
+<span class="c1"># 3. 使用 EvmPublicRpcFromChainList 获取公共 RPC 节点</span>
+<span class="c1"># 4. 使用 get_rpc_key_from_env 检查是否有私有 RPC 密钥</span>
+</code></pre></div>
+<h3 id="_19">最佳实践</h3>
+<ol>
+<li><strong>生产环境</strong>：建议提供完整的 <code>token</code>、<code>rpc_url</code> 等信息，减少网络查询</li>
+<li><strong>开发环境</strong>：可以依赖自动查询，简化配置</li>
+<li><strong>性能考虑</strong>：首次查询会进行网络请求，后续使用缓存</li>
+<li><strong>错误处理</strong>：网络不可用时，自动回退到内置的默认配置</li>
+</ol>
+<h2 id="_20">故障排除</h2>
+<h3 id="_21">常见问题</h3>
+<ol>
+<li><strong>402 响应后支付失败</strong></li>
+<li>检查私钥配置是否正确</li>
+<li>确认代币余额充足</li>
+<li>
+<p>验证链 ID 和代币地址匹配</p>
+</li>
+<li>
+<p><strong>令牌验证失败</strong></p>
+</li>
+<li>检查 <code>token_key</code> 是否一致</li>
+<li>确认令牌未过期</li>
+<li>
+<p>验证签名算法</p>
+</li>
+<li>
+<p><strong>RPC 连接问题</strong></p>
+</li>
+<li>检查网络连接</li>
+<li>确认 RPC URL 有效</li>
+<li>考虑使用备用节点</li>
+</ol>
+<h3 id="_22">调试模式</h3>
+<p>x402-mock 使用 <a href="https://github.com/Delgan/loguru">loguru</a> 作为日志库，默认不输出任何日志（避免干扰您的业务日志）。通过 <code>setup_logger</code> 开启：</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">setup_logger</span>
+
+<span class="c1"># 仅输出到控制台（DEBUG 级别）</span>
+<span class="n">setup_logger</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">)</span>
+
+<span class="c1"># 同时保存到文件（可选）</span>
+<span class="n">setup_logger</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span> <span class="n">log_to_file</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">log_path</span><span class="o">=</span><span class="s2">&quot;logs/x402-mock.log&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="setup_logger"><code>setup_logger</code> 参数说明</h4>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>level</code></td>
+<td>str</td>
+<td><code>"INFO"</code></td>
+<td>日志级别：<code>"DEBUG"</code>、<code>"INFO"</code>、<code>"WARNING"</code>、<code>"ERROR"</code></td>
+</tr>
+<tr>
+<td><code>log_to_file</code></td>
+<td>bool</td>
+<td><code>False</code></td>
+<td>是否同时保存日志到本地文件</td>
+</tr>
+<tr>
+<td><code>log_path</code></td>
+<td>str</td>
+<td><code>"logs/x402-mock.log"</code></td>
+<td>日志文件路径，目录不存在时自动创建</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>说明</strong>：日志文件自动按 10 MB 轮转，保留最近 7 天。</p>
+</blockquote>
+<h2 id="mcp-ai-agent">MCP 工具集成（供 AI Agent / 大模型调用）</h2>
+<p>x402-mock 提供了原生的 <a href="https://modelcontextprotocol.io/">MCP（Model Context Protocol）</a> 工具支持，让 LLM Agent（如 GitHub Copilot、Claude、GPT 等）可以直接调用，自动完成完整的 402 支付流程，无需手动编写支付代码。</p>
+<h3 id="mcp">安装 MCP 依赖</h3>
+<p>MCP 支持作为可选依赖提供，使用以下命令安装：</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>mcp
+</code></pre></div>
+<h3 id="mcp_1">可用的 MCP 工具</h3>
+<table>
+<thead>
+<tr>
+<th>工具名</th>
+<th>角色</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>source_request</code></td>
+<td>Client</td>
+<td>访问受 402 保护的资源，自动完成签名与支付重试</td>
+</tr>
+<tr>
+<td><code>signature</code></td>
+<td>Client</td>
+<td>根据服务端返回的支付组件列表，生成签名的 permit</td>
+</tr>
+<tr>
+<td><code>verify_and_settle</code></td>
+<td>Server</td>
+<td>验证 permit 签名并在链上结算（一步完成）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="server-mcp">Server 端 MCP 示例</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># example/mcp_server_example.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mcp.server.fastmcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastMCP</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.adapters.adapters_hub</span><span class="w"> </span><span class="kn">import</span> <span class="n">AdapterHub</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.adapters.evm.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">EVMPaymentComponent</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.mcp.facilitor_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">FacilitorTools</span>
+
+<span class="n">TOKEN_KEY</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X402_TOKEN_KEY&quot;</span><span class="p">,</span> <span class="s2">&quot;dev-secret-change-me&quot;</span><span class="p">)</span>
+<span class="n">EVM_PRIVATE_KEY</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;EVM_PRIVATE_KEY&quot;</span><span class="p">)</span>
+
+<span class="n">hub</span> <span class="o">=</span> <span class="n">AdapterHub</span><span class="p">(</span><span class="n">evm_private_key</span><span class="o">=</span><span class="n">EVM_PRIVATE_KEY</span><span class="p">)</span>
+<span class="n">hub</span><span class="o">.</span><span class="n">register_payment_methods</span><span class="p">(</span>
+    <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+        <span class="n">amount</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+        <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span><span class="p">,</span>
+        <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:11155111&quot;</span><span class="p">,</span>
+        <span class="n">token</span><span class="o">=</span><span class="s2">&quot;0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">client_role</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># 服务端角色</span>
+<span class="p">)</span>
+
+<span class="n">mcp</span> <span class="o">=</span> <span class="n">FastMCP</span><span class="p">(</span><span class="s2">&quot;x402&quot;</span><span class="p">)</span>
+<span class="n">FacilitorTools</span><span class="p">(</span><span class="n">adapter_hub</span><span class="o">=</span><span class="n">hub</span><span class="p">,</span> <span class="n">mcp</span><span class="o">=</span><span class="n">mcp</span><span class="p">,</span> <span class="n">client_role</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">mcp</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>  <span class="c1"># stdio 传输</span>
+</code></pre></div>
+<h3 id="client-mcp">Client 端 MCP 示例</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># example/mcp_client_example.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mcp.server.fastmcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastMCP</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.adapters.adapters_hub</span><span class="w"> </span><span class="kn">import</span> <span class="n">AdapterHub</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.adapters.evm.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">EVMPaymentComponent</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">x402_mock.mcp.facilitor_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">FacilitorTools</span>
+
+<span class="n">EVM_PRIVATE_KEY</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;EVM_PRIVATE_KEY&quot;</span><span class="p">)</span>
+
+<span class="n">hub</span> <span class="o">=</span> <span class="n">AdapterHub</span><span class="p">(</span><span class="n">evm_private_key</span><span class="o">=</span><span class="n">EVM_PRIVATE_KEY</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">EVM_PRIVATE_KEY</span><span class="p">:</span>
+    <span class="n">hub</span><span class="o">.</span><span class="n">register_payment_methods</span><span class="p">(</span>
+        <span class="n">EVMPaymentComponent</span><span class="p">(</span>
+            <span class="n">amount</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+            <span class="n">currency</span><span class="o">=</span><span class="s2">&quot;USDC&quot;</span><span class="p">,</span>
+            <span class="n">caip2</span><span class="o">=</span><span class="s2">&quot;eip155:11155111&quot;</span><span class="p">,</span>
+            <span class="n">token</span><span class="o">=</span><span class="s2">&quot;0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">client_role</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># 客户端角色</span>
+    <span class="p">)</span>
+
+<span class="n">mcp</span> <span class="o">=</span> <span class="n">FastMCP</span><span class="p">(</span><span class="s2">&quot;x402-client&quot;</span><span class="p">)</span>
+<span class="n">FacilitorTools</span><span class="p">(</span><span class="n">adapter_hub</span><span class="o">=</span><span class="n">hub</span><span class="p">,</span> <span class="n">mcp</span><span class="o">=</span><span class="n">mcp</span><span class="p">,</span> <span class="n">client_role</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">mcp</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>  <span class="c1"># stdio 传输</span>
+</code></pre></div>
+<h3 id="vs-codegithub-copilot">在 VS Code（GitHub Copilot）中配置</h3>
+<p>将以下配置添加到您项目的 <code>.vscode/mcp.json</code>（或用户级 MCP 配置文件）中，即可让 Copilot Agent 直接调用 x402-mock 的支付工具：</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;servers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;X402-Mock-Server&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;stdio&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uv&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;run&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;example/mcp_server_example.py&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;X402_TOKEN_KEY&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dev-secret-change-me&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;EVM_PRIVATE_KEY&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;your_private_key_here&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;EVM_INFURA_KEY&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;your_infura_key_here&quot;</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;X402-Mock-Client&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;stdio&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uv&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;run&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;example/mcp_client_example.py&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;EVM_PRIVATE_KEY&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;your_private_key_here&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;EVM_INFURA_KEY&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;your_infura_key_here&quot;</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>配置完成后，在 VS Code 的 Copilot Chat（Agent 模式）中，即可直接向大模型发出自然语言指令，例如：</p>
+<blockquote>
+<p>请用 <code>source_request</code> 工具访问 <code>http://localhost:8000/api/protected-data</code></p>
+</blockquote>
+<p>Copilot 将自动调用 <code>source_request</code> 工具，完成签名、支付、重试全流程并返回结果。</p>
+<h3 id="source_request"><code>source_request</code> 工具参数</h3>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>类型</th>
+<th>默认值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>url</code></td>
+<td>str</td>
+<td>必填</td>
+<td>目标资源 URL</td>
+</tr>
+<tr>
+<td><code>method</code></td>
+<td>str</td>
+<td><code>"GET"</code></td>
+<td>HTTP 方法</td>
+</tr>
+<tr>
+<td><code>headers</code></td>
+<td>dict</td>
+<td><code>None</code></td>
+<td>额外请求头</td>
+</tr>
+<tr>
+<td><code>timeout</code></td>
+<td>float</td>
+<td><code>30.0</code></td>
+<td>请求超时时间（秒）</td>
+</tr>
+</tbody>
+</table>
+<p>返回值为包含 <code>status_code</code>、<code>headers</code>、<code>body</code> 的字典。</p>
+<h2 id="_23">下一步</h2>
+<ul>
+<li>查看 <a href="../reference/">API 参考文档</a> 获取详细接口说明</li>
+<li>探索 <a href="../example/">示例代码</a></li>
+<li>了解 <a href="../reference/#Engine">事件系统</a> 实现自定义业务逻辑</li>
+</ul>
+<hr />
+<p><strong>提示</strong>：在生产环境中，请确保：
+1. 使用安全的密钥管理方案
+2. 配置适当的超时和重试策略
+3. 监控支付成功率和失败原因
+4. 定期更新依赖包以获取安全修复</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
